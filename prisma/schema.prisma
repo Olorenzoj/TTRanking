@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model categorias {
+  id                                                                       Int                    @id @default(autoincrement())
+  nombre                                                                   categorias_nombre      @unique(map: "nombre")
+  elo_inicial                                                              Float                  @db.Float
+  historial_categorias_historial_categorias_categoria_anteriorTocategorias historial_categorias[] @relation("historial_categorias_categoria_anteriorTocategorias")
+  historial_categorias_historial_categorias_categoria_nuevaTocategorias    historial_categorias[] @relation("historial_categorias_categoria_nuevaTocategorias")
+  jugadores                                                                jugadores[]
+  participaciones                                                          participaciones[]
+  torneo_categorias                                                        torneo_categorias[]
+}
+
+model clubes {
+  id        Int         @id @default(autoincrement())
+  nombre    String      @unique(map: "nombre") @db.VarChar(100)
+  jugadores jugadores[]
+}
+
+model historial_categorias {
+  id                                                             Int                         @id @default(autoincrement())
+  jugador_id                                                     Int
+  categoria_anterior                                             Int?
+  categoria_nueva                                                Int
+  fecha_cambio                                                   DateTime?                   @default(now()) @db.DateTime(0)
+  motivo                                                         historial_categorias_motivo
+  torneo_id                                                      Int?
+  jugadores                                                      jugadores                   @relation(fields: [jugador_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "historial_categorias_ibfk_1")
+  categorias_historial_categorias_categoria_anteriorTocategorias categorias?                 @relation("historial_categorias_categoria_anteriorTocategorias", fields: [categoria_anterior], references: [id], onUpdate: NoAction, map: "historial_categorias_ibfk_2")
+  categorias_historial_categorias_categoria_nuevaTocategorias    categorias                  @relation("historial_categorias_categoria_nuevaTocategorias", fields: [categoria_nueva], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "historial_categorias_ibfk_3")
+  torneos                                                        torneos?                    @relation(fields: [torneo_id], references: [id], onUpdate: NoAction, map: "historial_categorias_ibfk_4")
+
+  @@index([categoria_anterior], map: "categoria_anterior")
+  @@index([categoria_nueva], map: "categoria_nueva")
+  @@index([jugador_id], map: "jugador_id")
+  @@index([torneo_id], map: "torneo_id")
+}
+
+model jugadores {
+  id                                       Int                    @id @default(autoincrement())
+  nombre                                   String                 @db.VarChar(100)
+  elo                                      Float?                 @db.Float
+  club_id                                  Int
+  categoria_id                             Int
+  ultimo_torneo_id                         Int?
+  historial_categorias                     historial_categorias[]
+  clubes                                   clubes                 @relation(fields: [club_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "jugadores_ibfk_1")
+  categorias                               categorias             @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "jugadores_ibfk_2")
+  torneos                                  torneos?               @relation(fields: [ultimo_torneo_id], references: [id], onUpdate: NoAction, map: "jugadores_ibfk_3")
+  participaciones                          participaciones[]
+  partidos_partidos_jugador1_idTojugadores partidos[]             @relation("partidos_jugador1_idTojugadores")
+  partidos_partidos_jugador2_idTojugadores partidos[]             @relation("partidos_jugador2_idTojugadores")
+  partidos_partidos_ganador_idTojugadores  partidos[]             @relation("partidos_ganador_idTojugadores")
+
+  @@index([categoria_id], map: "categoria_id")
+  @@index([club_id], map: "club_id")
+  @@index([ultimo_torneo_id], map: "ultimo_torneo_id")
+}
+
+model participaciones {
+  id              Int                              @id @default(autoincrement())
+  jugador_id      Int
+  torneo_id       Int
+  categoria_id    Int
+  elo_antes       Float                            @db.Float
+  elo_despues     Float                            @db.Float
+  bonificacion    Int?                             @default(0)
+  ronda_alcanzada participaciones_ronda_alcanzada?
+  posicion        Int?
+  jugadores       jugadores                        @relation(fields: [jugador_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "participaciones_ibfk_1")
+  torneos         torneos                          @relation(fields: [torneo_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "participaciones_ibfk_2")
+  categorias      categorias                       @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "participaciones_ibfk_3")
+
+  @@index([categoria_id], map: "categoria_id")
+  @@index([jugador_id], map: "jugador_id")
+  @@index([torneo_id], map: "torneo_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model partidos {
+  id                                        Int                     @id @default(autoincrement())
+  jugador1_id                               Int
+  jugador2_id                               Int?
+  ganador_id                                Int
+  torneo_id                                 Int
+  ronda                                     partidos_ronda?
+  tipo_especial                             partidos_tipo_especial?
+  fecha                                     DateTime?               @default(now()) @db.DateTime(0)
+  jugadores_partidos_jugador1_idTojugadores jugadores               @relation("partidos_jugador1_idTojugadores", fields: [jugador1_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "partidos_ibfk_1")
+  jugadores_partidos_jugador2_idTojugadores jugadores?              @relation("partidos_jugador2_idTojugadores", fields: [jugador2_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "partidos_ibfk_2")
+  jugadores_partidos_ganador_idTojugadores  jugadores               @relation("partidos_ganador_idTojugadores", fields: [ganador_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "partidos_ibfk_3")
+  torneos                                   torneos                 @relation(fields: [torneo_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "partidos_ibfk_4")
+
+  @@index([ganador_id], map: "ganador_id")
+  @@index([jugador1_id], map: "jugador1_id")
+  @@index([jugador2_id], map: "jugador2_id")
+  @@index([torneo_id], map: "torneo_id")
+}
+
+model torneo_categorias {
+  torneo_id    Int
+  categoria_id Int
+  torneos      torneos    @relation(fields: [torneo_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "torneo_categorias_ibfk_1")
+  categorias   categorias @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "torneo_categorias_ibfk_2")
+
+  @@id([torneo_id, categoria_id])
+  @@index([categoria_id], map: "categoria_id")
+}
+
+model torneos {
+  id                   Int                    @id @default(autoincrement())
+  nombre               String                 @db.VarChar(100)
+  fecha                DateTime               @db.Date
+  ubicacion            String?                @db.VarChar(100)
+  historial_categorias historial_categorias[]
+  jugadores            jugadores[]
+  participaciones      participaciones[]
+  partidos             partidos[]
+  torneo_categorias    torneo_categorias[]
+}
+
+enum categorias_nombre {
+  primera @map("1era")
+  segunda @map("2da")
+  tercera @map("3era")
+  cuarta  @map("4ta")
+}
+
+enum historial_categorias_motivo {
+  Ascenso
+  Descenso
+  Ajuste
+  Inicial
+}
+
+enum partidos_ronda {
+  Grupos
+  treinta_y_dos_avos @map("32avos")
+  dieciseis_avos     @map("16avos")
+  Octavos
+  Cuartos
+  Semifinal
+  Final
+  Campeon            @map("Campeón")
+}
+
+enum partidos_tipo_especial {
+  Forfeit
+  Bye
+}
+
+enum participaciones_ronda_alcanzada {
+  Grupos
+  treinta_y_dos_avos @map("32avos")
+  dieciseis_avos     @map("16avos")
+  Octavos
+  Cuartos
+  Semifinal
+  Final
+  Campeon            @map("Campeón")
+}
