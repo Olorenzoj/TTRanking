@@ -23,7 +23,7 @@ export default function ClubesSection() {
   }, [])
   
   const columns = [
-    { header: 'ID', accessor: 'id' },
+    { header: 'ID', accessor: 'id', sortable: true },
     { header: 'Nombre', accessor: 'nombre' },
     { header: 'Jugadores', accessor: '_count.jugadores' },
   ]
@@ -51,7 +51,7 @@ export default function ClubesSection() {
         />
       ) : (
         <DataTable 
-          columns={columns} 
+          columns={columns}
           data={clubes} 
           onRowClick={(row) => console.log(row)}
         />

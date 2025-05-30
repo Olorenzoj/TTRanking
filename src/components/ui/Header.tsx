@@ -8,6 +8,7 @@ export default function Header() {
   
   const navigation = [
     { name: 'Dashboard', href: '/dashboard' },
+    {name: 'Estadisticas', href: '/dashboard/estadisticas'},
     { name: 'Jugadores', href: '/dashboard/jugadores' },
     { name: 'Torneos', href: '/dashboard/torneos' },
     { name: 'Partidos', href: '/dashboard/partidos' },
