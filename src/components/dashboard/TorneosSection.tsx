@@ -4,24 +4,44 @@ import TorneoForm from '@/components/forms/TorneoForm'
 import DataTable from '@/components/ui/DataTable'
 import { PlusIcon } from '@heroicons/react/24/outline'
 
+type Torneo = {
+  id: number
+  nombre: string
+  fecha: string
+  ubicacion: string
+  torneo_categorias: { categorias?: { nombre?: string } }[]
+}
+
+type PaginatedResponse = {
+  torneos: Torneo[]
+  total: number
+}
+
 export default function TorneosSection({ className = '' }) {
   const [showForm, setShowForm] = useState(false)
-  const [torneos, setTorneos] = useState([])
+  const [torneos, setTorneos] = useState<Torneo[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [totalItems, setTotalItems] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
   
-  const fetchTorneos = async () => {
-    const response = await fetch('/api/torneos',
-         
-        {
-            method: 'GET'
-        }
-    )
-    const data = await response.json()
-    setTorneos(data)
+  const fetchTorneos = async (page: number, limit: number) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/torneos?page=${page}&limit=${limit}`)
+      const data: PaginatedResponse = await response.json()
+      setTorneos(data.torneos)
+      setTotalItems(data.total)
+    } catch (error) {
+      console.error('Error fetching tournaments:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
   
   useEffect(() => {
-    fetchTorneos()
-  }, [])
+    fetchTorneos(currentPage, itemsPerPage)
+  }, [currentPage, itemsPerPage])
   
   const columns = [
     { header: 'ID', accessor: 'id' },
@@ -30,7 +50,6 @@ export default function TorneosSection({ className = '' }) {
       header: 'Fecha', 
       accessor: 'fecha',
       render: (fecha: string) => new Date(fecha).toLocaleDateString()
-
     },
     { header: 'Ubicación', accessor: 'ubicacion' },
     { 
@@ -61,7 +80,7 @@ export default function TorneosSection({ className = '' }) {
         <TorneoForm 
           onSuccessAction={() => {
             setShowForm(false)
-            fetchTorneos()
+            fetchTorneos(currentPage, itemsPerPage)
           }} 
           onCancelAction={() => setShowForm(false)}
         />
@@ -70,6 +89,12 @@ export default function TorneosSection({ className = '' }) {
           columns={columns} 
           data={torneos} 
           onRowClick={(row) => console.log(row)}
+          currentPage={currentPage}
+          itemsPerPage={itemsPerPage}
+          totalItems={totalItems}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          isLoading={isLoading}
         />
       )}
     </div>

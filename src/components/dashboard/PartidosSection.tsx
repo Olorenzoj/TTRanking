@@ -5,32 +5,57 @@ import { PlusIcon } from '@heroicons/react/24/outline'
 import PartidoForm from '@/components/forms/PartidoForm'
 import { safeFetch } from '@/lib/api'
 
+type Partido = {
+  id: number
+  jugador1Nombre: string
+  jugador2Nombre: string
+  ganadorNombre: string
+  torneoNombre: string
+  fecha: string
+}
+
+type PaginatedResponse = {
+  partidos: Partido[]
+  total: number
+}
+
 export default function PartidosSection() {
   const [showForm, setShowForm] = useState(false)
-  const [partidos, setPartidos] = useState<any[]>([])
+  const [partidos, setPartidos] = useState<Partido[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [totalItems, setTotalItems] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
   
-  const fetchPartidos = async () => {
+  const fetchPartidos = async (page: number, limit: number) => {
     try {
+      setIsLoading(true)
       setError(null)
-      const data = await safeFetch('/api/partidos')
-      const parsed = data.map((partido: any) => ({
-      ...partido,
-      jugador1Nombre: partido.jugador1?.nombre ?? 'N/A',
-      jugador2Nombre: partido.jugador2?.nombre ?? 'N/A',
-      ganadorNombre: partido.ganador?.nombre ?? 'N/A',
-      torneoNombre: partido.torneo?.nombre ?? 'N/A',
-    }))
-    setPartidos(parsed)
+      const data = await safeFetch(`/api/partidos?page=${page}&limit=${limit}`)
+      
+      const parsed = data.partidos.map((partido: any) => ({
+        id: partido.id,
+        jugador1Nombre: partido.jugador1?.nombre ?? 'N/A',
+        jugador2Nombre: partido.jugador2?.nombre ?? 'N/A',
+        ganadorNombre: partido.ganador?.nombre ?? 'N/A',
+        torneoNombre: partido.torneo?.nombre ?? 'N/A',
+        fecha: new Date(partido.fecha).toLocaleDateString()
+      }))
+      
+      setPartidos(parsed)
+      setTotalItems(data.total)
     } catch (err) {
       console.error('Failed to fetch matches:', err)
       setError('Error al cargar partidos. Intente nuevamente.')
+    } finally {
+      setIsLoading(false)
     }
   }
   
   useEffect(() => {
-    fetchPartidos()
-  }, [])
+    fetchPartidos(currentPage, itemsPerPage)
+  }, [currentPage, itemsPerPage])
   
   const columns = [
     { header: 'ID', accessor: 'id' },
@@ -64,7 +89,7 @@ export default function PartidosSection() {
         <PartidoForm 
           onSuccessAction={() => {
             setShowForm(false)
-            fetchPartidos()
+            fetchPartidos(currentPage, itemsPerPage)
           }} 
           onCancelAction={() => setShowForm(false)}
         />
@@ -73,6 +98,12 @@ export default function PartidosSection() {
           columns={columns} 
           data={partidos} 
           onRowClick={(row) => console.log(row)}
+          currentPage={currentPage}
+          itemsPerPage={itemsPerPage}
+          totalItems={totalItems}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          isLoading={isLoading}
         />
       )}
     </div>

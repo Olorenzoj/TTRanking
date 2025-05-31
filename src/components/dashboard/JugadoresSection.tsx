@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import JugadorForm from '@/components/forms/JugadorForm'
 import DataTable from '@/components/ui/DataTable'
-import { ArrowDownIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { PlusIcon } from '@heroicons/react/24/outline'
 
 type Jugador = {
   id: number
@@ -12,47 +12,42 @@ type Jugador = {
   categorias?: { nombre?: string }
 }
 
+type PaginatedResponse = {
+  jugadores: Jugador[]
+  total: number
+}
 
 export default function JugadoresSection({ className = '' }) {
   const [showForm, setShowForm] = useState(false)
   const [jugadores, setJugadores] = useState<Jugador[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [totalItems, setTotalItems] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const fetchJugadores = async () => {
-    const response = await fetch('/api/jugadores',
-      {
-        method: 'GET'
+  const fetchJugadores = async (page: number, limit: number) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/jugadores?page=${page}&limit=${limit}`);
+      
+      // Verificar si la respuesta es exitosa
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`)
       }
-    )
-    const data = await response.json()
-    setJugadores(data)
-  }
+      
+      const data: PaginatedResponse = await response.json();
+      setJugadores(data.jugadores);
+      setTotalItems(data.total);
+    } catch (error) {
+      console.error('Error fetching jugadores:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchJugadores()
-  }, [])
-  const getCurrentMonth = (month : number, year : number, formatted: boolean) => {
-    const monthMap = [
-      { value: "1", label: "ENE", key: "ENE" },
-      { value: "2", label: "FEB", key: "FEB" },
-      { value: "3", label: "MAR", key: "MAR" },
-      { value: "4", label: "ABRIL", key: "ABRIL" },
-      { value: "5", label: "MAY", key: "MAY" },
-      { value: "6", label: "JUN", key: "JUN" },
-      { value: "7", label: "JUL", key: "JUL" },
-      { value: "8", label: "AGO", key: "AGO" },
-      { value: "9", label: "SEP", key: "SEP" },
-      { value: "10", label: "OCT", key: "OCT" },
-      { value: "11", label: "NOV", key: "NOV" },
-      { value: "12", label: "DIC", key: "DIC" }
-    ];
-    
-    if (formatted){
-      const mes = monthMap[month].key
-      return `${mes.toLowerCase()} ${year}`
-    }else{
-      return `${monthMap[month].key}_${year}`
-    }
-  }
+    fetchJugadores(currentPage, itemsPerPage);
+  }, [currentPage, itemsPerPage]);
 
   const columns = [
     { header: 'ID', accessor: 'id', sortable: true },
@@ -89,7 +84,7 @@ export default function JugadoresSection({ className = '' }) {
         <JugadorForm
           onSuccessAction={() => {
             setShowForm(false)
-            fetchJugadores()
+            fetchJugadores(currentPage, itemsPerPage)
           }}
           onCancelAction={() => setShowForm(false)}
         />
@@ -98,6 +93,12 @@ export default function JugadoresSection({ className = '' }) {
           columns={columns}
           data={jugadores}
           onRowClick={(row) => console.log(row)}
+          currentPage={currentPage}
+          itemsPerPage={itemsPerPage}
+          totalItems={totalItems}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          isLoading={isLoading}
         />
       )}
     </div>

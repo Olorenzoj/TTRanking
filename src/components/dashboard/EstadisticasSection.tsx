@@ -57,22 +57,36 @@ export default function EstadisticasSection({ className = '' }) {
     const fetchStats = async () => {
       setLoading(true)
       try {
+        // Obtener todos los datos sin paginación para estadísticas
         const [jugadoresRes, torneosRes, partidosRes, eloRes, clubesRes] = await Promise.all([
-          fetch('/api/jugadores'),
-          fetch('/api/torneos'),
-          fetch('/api/partidos'),
+          fetch('/api/jugadores?limit=1000'),
+          fetch('/api/torneos?limit=1000'),
+          fetch('/api/partidos?limit=1000'),
           fetch('/api/estadisticas/elo-por-categoria'),
           fetch('/api/estadisticas/jugadores-por-club')
         ])
 
+        // Verificar respuestas antes de parsear
+        if (!jugadoresRes.ok) throw new Error('Error fetching jugadores')
+        if (!torneosRes.ok) throw new Error('Error fetching torneos')
+        if (!partidosRes.ok) throw new Error('Error fetching partidos')
+        if (!eloRes.ok) throw new Error('Error fetching elo data')
+        if (!clubesRes.ok) throw new Error('Error fetching clubes data')
+
+        // Parsear respuestas
         const jugadoresData = await jugadoresRes.json()
         const torneosData = await torneosRes.json()
         const partidosData = await partidosRes.json()
         const eloData: EloPorCategoria[] = await eloRes.json()
         const clubesData: JugadoresPorClub[] = await clubesRes.json()
 
-        const partidosPorTorneo: PartidosPorTorneo[] = torneosData.map((torneo: Torneo) => {
-          const count = partidosData.filter((p: Partido) => p.torneo_id === torneo.id).length
+        // Manejar datos paginados
+        const jugadoresArray = jugadoresData.jugadores || []
+        const torneosArray = torneosData.torneos || torneosData
+        const partidosArray = partidosData.partidos || partidosData
+
+        const partidosPorTorneo: PartidosPorTorneo[] = torneosArray.map((torneo: Torneo) => {
+          const count = partidosArray.filter((p: Partido) => p.torneo_id === torneo.id).length
           return {
             nombre: torneo.nombre,
             partidos: count
@@ -84,14 +98,15 @@ export default function EstadisticasSection({ className = '' }) {
         const top5 = clubesOrdenados.slice(0, 5)
         const resto = clubesOrdenados.slice(5)
         const otrosTotal = resto.reduce((acc, club) => acc + club.jugadores, 0)
+        
         if (otrosTotal > 0) {
           top5.push({ club: 'Otros', jugadores: otrosTotal })
         }
 
         setStats({
-          totalJugadores: jugadoresData.length,
-          totalTorneos: torneosData.length,
-          totalPartidos: partidosData.length,
+          totalJugadores: jugadoresArray.length,
+          totalTorneos: torneosArray.length,
+          totalPartidos: partidosArray.length,
           eloPorCategoria: eloData,
           jugadoresPorClub: top5,
           partidosPorTorneo
@@ -183,26 +198,8 @@ export default function EstadisticasSection({ className = '' }) {
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value, name, props) => [`${value} jugadores`, props.payload.club]} />
- <Legend
-  layout="horizontal"
-  verticalAlign="bottom"
-  align="center"
-  wrapperStyle={{
-    maxWidth: '100%',
-    whiteSpace: 'normal',
-    display: 'flex',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    fontSize: '0.75rem',
-    marginTop: '1rem',
-    padding: '0 8px',
-    boxSizing: 'border-box',
-    wordBreak: 'break-word',
-    rowGap: '0.5rem',
-    columnGap: '1rem',
-  }}
-/>
+              <Tooltip formatter={(value) => [`${value} jugadores`]} />
+              
             </PieChart>
           </ResponsiveContainer>
         </div>

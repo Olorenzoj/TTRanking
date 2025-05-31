@@ -1,26 +1,38 @@
 import prisma from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const partidos = await prisma.partidos.findMany({
-      include: {
-        jugadores_partidos_jugador1_idTojugadores: true,
-        jugadores_partidos_jugador2_idTojugadores: true,
-        jugadores_partidos_ganador_idTojugadores: true,
-        torneos: true
-      }
-    });
+    const { searchParams } = new URL(request.url)
+    const page = Number(searchParams.get('page') || 1)
+    const limit = Number(searchParams.get('limit') || 10)
+    const skip = (page - 1) * limit
+
+    const [partidos, total] = await Promise.all([
+      prisma.partidos.findMany({
+        skip,
+        take: limit,
+        include: {
+          jugadores_partidos_jugador1_idTojugadores: true,
+          jugadores_partidos_jugador2_idTojugadores: true,
+          jugadores_partidos_ganador_idTojugadores: true,
+          torneos: true
+        }
+      }),
+      prisma.partidos.count()
+    ]);
     
     const partidosFormateados = partidos.map(partido => ({
-      ...partido,
-      jugador1: partido.jugadores_partidos_jugador1_idTojugadores,
-      jugador2: partido.jugadores_partidos_jugador2_idTojugadores,
-      ganador: partido.jugadores_partidos_ganador_idTojugadores,
-      torneo: partido.torneos
+      id: partido.id,
+      jugador1Nombre: partido.jugadores_partidos_jugador1_idTojugadores?.nombre ?? 'N/A',
+      jugador2Nombre: partido.jugadores_partidos_jugador2_idTojugadores?.nombre ?? 'N/A',
+      ganadorNombre: partido.jugadores_partidos_ganador_idTojugadores?.nombre ?? 'N/A',
+      torneoNombre: partido.torneos?.nombre ?? 'N/A',
+      // Manejo seguro para fechas nulas
+      fecha: partido.fecha ? new Date(partido.fecha).toLocaleDateString() : 'N/A'
     }));
     
-    return NextResponse.json(partidosFormateados);
+    return NextResponse.json({ partidos: partidosFormateados, total });
   } catch (error) {
     console.error('Error fetching matches:', error);
     return NextResponse.json(
@@ -30,6 +42,7 @@ export async function GET() {
   }
 }
 
+// ... (resto del código POST y OPTIONS permanece igual)
 export async function POST(request: Request) {
   try {
     const data = await request.json();

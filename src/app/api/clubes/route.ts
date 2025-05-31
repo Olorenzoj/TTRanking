@@ -1,22 +1,44 @@
 import prisma from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const clubes = await prisma.clubes.findMany({
-      include: {
-        _count: { select: { jugadores: true } }
-      }
-    })
-    return NextResponse.json(clubes)
+    const { searchParams } = new URL(request.url)
+    const page = Number(searchParams.get('page') || 1)
+    const limit = Number(searchParams.get('limit') || 10)
+    const skip = (page - 1) * limit
+
+    const [clubes, total] = await Promise.all([
+      prisma.clubes.findMany({
+        skip,
+        take: limit,
+        include: {
+          _count: {
+            select: { jugadores: true }
+          }
+        }
+      }),
+      prisma.clubes.count()
+    ])
+
+    // Transformar los datos para incluir jugadoresCount directamente
+    const clubesConCount = clubes.map(club => ({
+      id: club.id,
+      nombre: club.nombre,
+      // Asegurar que jugadoresCount esté presente
+      jugadoresCount: club._count?.jugadores ?? 0
+    }))
+
+    return NextResponse.json({ clubes: clubesConCount, total })
   } catch (error) {
-    console.error('Error fetching clubes:', error)
+    console.error('Error fetching clubs:', error)
     return NextResponse.json(
       { error: "Error al obtener clubes" },
       { status: 500 }
     )
   }
 }
+
 export async function POST(request: Request) {
   try {
     const { nombre } = await request.json()

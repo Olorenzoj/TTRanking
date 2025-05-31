@@ -1,18 +1,29 @@
 import prisma from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const torneos = await prisma.torneos.findMany({
-      include: {
-        torneo_categorias: {
-          include: {
-            categorias: true
+    const { searchParams } = new URL(request.url)
+    const page = Number(searchParams.get('page') || 1)
+    const limit = Number(searchParams.get('limit') || 10)
+    const skip = (page - 1) * limit
+
+    const [torneos, total] = await Promise.all([
+      prisma.torneos.findMany({
+        skip,
+        take: limit,
+        include: {
+          torneo_categorias: {
+            include: {
+              categorias: true
+            }
           }
         }
-      }
-    })
-    return NextResponse.json(torneos)
+      }),
+      prisma.torneos.count()
+    ])
+    
+    return NextResponse.json({ torneos, total })
   } catch (error) {
     return NextResponse.json(
       { message: "Error al obtener torneos" },
@@ -20,6 +31,8 @@ export async function GET() {
     )
   }
 }
+
+// ... (resto del código POST permanece igual)
 
 export async function POST(request: Request) {
   const data = await request.json()

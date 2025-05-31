@@ -1,24 +1,26 @@
 import prisma from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
-// Add type definitions
-type JugadorData = {
-  nombre: string
-  club_id: number | string
-  categoria_id: number | string
-  elo?: number
-}
-
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const jugadores = await prisma.jugadores.findMany({
-      include: {
-        clubes: true,
-        categorias: true,
-        torneos: true,
-      }
-    })
-    return NextResponse.json(jugadores)
+    const { searchParams } = new URL(request.url)
+    const page = Number(searchParams.get('page') || 1)
+    const limit = Number(searchParams.get('limit') || 10)
+    const skip = (page - 1) * limit
+
+    const [jugadores, total] = await Promise.all([
+      prisma.jugadores.findMany({
+        skip,
+        take: limit,
+        include: {
+          clubes: true,
+          categorias: true,
+        },
+      }),
+      prisma.jugadores.count()
+    ])
+
+    return NextResponse.json({ jugadores, total })
   } catch (error) {
     console.error('Error fetching jugadores:', error)
     return NextResponse.json(
@@ -30,14 +32,18 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const data: JugadorData = await request.json()
+    const data = await request.json()
     
     const nuevoJugador = await prisma.jugadores.create({
       data: {
         nombre: data.nombre,
         club_id: Number(data.club_id),
         categoria_id: Number(data.categoria_id),
-        elo: data.elo || 1000, // Default value
+        elo: data.elo || 1000,
+      },
+      include: {
+        clubes: true,
+        categorias: true,
       }
     })
     return NextResponse.json(nuevoJugador, { status: 201 })

@@ -4,26 +4,50 @@ import ClubForm from '@/components/forms/ClubForm'
 import DataTable from '@/components/ui/DataTable'
 import { PlusIcon } from '@heroicons/react/24/outline'
 
-export default function ClubesSection() {
-  const [showForm, setShowForm] = useState(false)
-  const [clubes, setClubes] = useState([])
-  
- const fetchClubes = async () => {
-  const response = await fetch('/api/clubes', { method: 'GET' })
-  const data = await response.json()
-  
-  const parsed = data.map((club: any) => ({
-    ...club,
-    jugadoresCount: club._count?.jugadores ?? 0
-  }))
-  
-  setClubes(parsed)
+type Club = {
+  id: number
+  nombre: string
+  jugadoresCount: number
 }
 
-  
+type PaginatedResponse = {
+  clubes: Club[]
+  total: number
+}
+
+export default function ClubesSection() {
+  const [showForm, setShowForm] = useState(false)
+  const [clubes, setClubes] = useState<Club[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [totalItems, setTotalItems] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const fetchClubes = async (page: number, limit: number) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/clubes?page=${page}&limit=${limit}`)
+      
+      // Verificar si la respuesta es exitosa
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`)
+      }
+      
+      const data: PaginatedResponse = await response.json()
+      
+      // Usar los datos directamente sin transformación adicional
+      setClubes(data.clubes)
+      setTotalItems(data.total)
+    } catch (error) {
+      console.error('Error fetching clubs:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
-    fetchClubes()
-  }, [])
+    fetchClubes(currentPage, itemsPerPage)
+  }, [currentPage, itemsPerPage])
   
   const columns = [
     { header: 'ID', accessor: 'id', sortable: true },
@@ -48,7 +72,7 @@ export default function ClubesSection() {
         <ClubForm 
           onSuccessAction={() => {
             setShowForm(false)
-            fetchClubes()
+            fetchClubes(currentPage, itemsPerPage)
           }} 
           onCancelAction={() => setShowForm(false)}
         />
@@ -57,6 +81,12 @@ export default function ClubesSection() {
           columns={columns}
           data={clubes} 
           onRowClick={(row) => console.log(row)}
+          currentPage={currentPage}
+          itemsPerPage={itemsPerPage}
+          totalItems={totalItems}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          isLoading={isLoading}
         />
       )}
     </div>
