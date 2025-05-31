@@ -1,6 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell
+} from 'recharts'
+import Link from 'next/link'
 
 interface Torneo {
   id: number
@@ -11,13 +15,34 @@ interface Partido {
   torneo_id: number
 }
 
-// Colores para gráficos
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+interface EloPorCategoria {
+  categoria: string
+  elo_promedio: number
+}
+
+interface JugadoresPorClub {
+  club: string
+  jugadores: number
+}
+
+interface PartidosPorTorneo {
+  nombre: string
+  partidos: number
+}
+
+interface Estadisticas {
+  totalJugadores: number
+  totalTorneos: number
+  totalPartidos: number
+  eloPorCategoria: EloPorCategoria[]
+  jugadoresPorClub: JugadoresPorClub[]
+  partidosPorTorneo: PartidosPorTorneo[]
+}
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D']
 
 export default function EstadisticasSection({ className = '' }) {
-  
-  
-    const [stats, setStats] = useState({
+  const [stats, setStats] = useState<Estadisticas>({
     totalJugadores: 0,
     totalTorneos: 0,
     totalPartidos: 0,
@@ -25,6 +50,7 @@ export default function EstadisticasSection({ className = '' }) {
     jugadoresPorClub: [],
     partidosPorTorneo: []
   })
+
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -32,36 +58,42 @@ export default function EstadisticasSection({ className = '' }) {
       setLoading(true)
       try {
         const [jugadoresRes, torneosRes, partidosRes, eloRes, clubesRes] = await Promise.all([
-         fetch('/api/jugadores', { method: 'GET' }),
-    fetch('/api/torneos', { method: 'GET' }),
-    fetch('/api/partidos', { method: 'GET' }),
-    fetch('/api/estadisticas/elo-por-categoria', { method: 'GET' }),
-    fetch('/api/estadisticas/jugadores-por-club', { method: 'GET' })
+          fetch('/api/jugadores'),
+          fetch('/api/torneos'),
+          fetch('/api/partidos'),
+          fetch('/api/estadisticas/elo-por-categoria'),
+          fetch('/api/estadisticas/jugadores-por-club')
         ])
-        
+
         const jugadoresData = await jugadoresRes.json()
         const torneosData = await torneosRes.json()
         const partidosData = await partidosRes.json()
-        const eloData = await eloRes.json()
-        const clubesData = await clubesRes.json()
-        
-        // Calcular partidos por torneo
-  const partidosPorTorneo = torneosData.map((torneo: Torneo) => {
-  const count = partidosData.filter((p: Partido) => p.torneo_id === torneo.id).length
-  return {
-    nombre: torneo.nombre,
-    partidos: count
-  }
-})
+        const eloData: EloPorCategoria[] = await eloRes.json()
+        const clubesData: JugadoresPorClub[] = await clubesRes.json()
 
+        const partidosPorTorneo: PartidosPorTorneo[] = torneosData.map((torneo: Torneo) => {
+          const count = partidosData.filter((p: Partido) => p.torneo_id === torneo.id).length
+          return {
+            nombre: torneo.nombre,
+            partidos: count
+          }
+        })
 
-        
+        // Agrupar clubes: top 5 + "Otros"
+        const clubesOrdenados = [...clubesData].sort((a, b) => b.jugadores - a.jugadores)
+        const top5 = clubesOrdenados.slice(0, 5)
+        const resto = clubesOrdenados.slice(5)
+        const otrosTotal = resto.reduce((acc, club) => acc + club.jugadores, 0)
+        if (otrosTotal > 0) {
+          top5.push({ club: 'Otros', jugadores: otrosTotal })
+        }
+
         setStats({
           totalJugadores: jugadoresData.length,
           totalTorneos: torneosData.length,
           totalPartidos: partidosData.length,
           eloPorCategoria: eloData,
-          jugadoresPorClub: clubesData,
+          jugadoresPorClub: top5,
           partidosPorTorneo
         })
       } catch (error) {
@@ -70,7 +102,7 @@ export default function EstadisticasSection({ className = '' }) {
         setLoading(false)
       }
     }
-    
+
     fetchStats()
   }, [])
 
@@ -96,24 +128,24 @@ export default function EstadisticasSection({ className = '' }) {
   return (
     <div className={`bg-white rounded-lg shadow p-4 ${className}`}>
       <h2 className="text-xl font-bold mb-4">Estadísticas</h2>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-blue-50 p-4 rounded-lg text-center">
+        <Link className="bg-blue-50 p-4 rounded-lg text-center" href='dashboard/jugadores'>
           <h3 className="text-lg font-semibold text-blue-700">Jugadores</h3>
           <p className="text-3xl font-bold">{stats.totalJugadores}</p>
-        </div>
-        
-        <div className="bg-green-50 p-4 rounded-lg text-center">
+        </Link>
+
+        <Link className="bg-green-50 p-4 rounded-lg text-center" href="/dashboard/torneos">
           <h3 className="text-lg font-semibold text-green-700">Torneos</h3>
           <p className="text-3xl font-bold">{stats.totalTorneos}</p>
-        </div>
-        
-        <div className="bg-purple-50 p-4 rounded-lg text-center">
+        </Link>
+
+        <Link className="bg-purple-50 p-4 rounded-lg text-center" href='/dashboard/partidos'>
           <h3 className="text-lg font-semibold text-purple-700">Partidos</h3>
           <p className="text-3xl font-bold">{stats.totalPartidos}</p>
-        </div>
+        </Link>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="h-80">
           <h3 className="text-lg font-semibold mb-2 text-center">Puntos Promedio por Categoría</h3>
@@ -131,8 +163,8 @@ export default function EstadisticasSection({ className = '' }) {
             </BarChart>
           </ResponsiveContainer>
         </div>
-        
-        <div className="h-80">
+
+        <div className="w-full h-[300px]">
           <h3 className="text-lg font-semibold mb-2 text-center">Jugadores por Club</h3>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -152,7 +184,25 @@ export default function EstadisticasSection({ className = '' }) {
                 ))}
               </Pie>
               <Tooltip formatter={(value, name, props) => [`${value} jugadores`, props.payload.club]} />
-              <Legend />
+ <Legend
+  layout="horizontal"
+  verticalAlign="bottom"
+  align="center"
+  wrapperStyle={{
+    maxWidth: '100%',
+    whiteSpace: 'normal',
+    display: 'flex',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    fontSize: '0.75rem',
+    marginTop: '1rem',
+    padding: '0 8px',
+    boxSizing: 'border-box',
+    wordBreak: 'break-word',
+    rowGap: '0.5rem',
+    columnGap: '1rem',
+  }}
+/>
             </PieChart>
           </ResponsiveContainer>
         </div>

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import DataTable from '@/components/ui/DataTable'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import PartidoForm from '@/components/forms/PartidoForm'
-import { safeFetch } from '@/lib/api' // Asumiendo que tienes este helper
+import { safeFetch } from '@/lib/api'
 
 export default function PartidosSection() {
   const [showForm, setShowForm] = useState(false)
@@ -14,7 +14,14 @@ export default function PartidosSection() {
     try {
       setError(null)
       const data = await safeFetch('/api/partidos')
-      setPartidos(data)
+      const parsed = data.map((partido: any) => ({
+      ...partido,
+      jugador1Nombre: partido.jugador1?.nombre ?? 'N/A',
+      jugador2Nombre: partido.jugador2?.nombre ?? 'N/A',
+      ganadorNombre: partido.ganador?.nombre ?? 'N/A',
+      torneoNombre: partido.torneo?.nombre ?? 'N/A',
+    }))
+    setPartidos(parsed)
     } catch (err) {
       console.error('Failed to fetch matches:', err)
       setError('Error al cargar partidos. Intente nuevamente.')
@@ -27,10 +34,10 @@ export default function PartidosSection() {
   
   const columns = [
     { header: 'ID', accessor: 'id' },
-    { header: 'Jugador 1', accessor: 'jugador1.nombre' },
-    { header: 'Jugador 2', accessor: 'jugador2.nombre' },
-    { header: 'Ganador', accessor: 'ganador.nombre' },
-    { header: 'Torneo', accessor: 'torneo.nombre' },
+    { header: 'Jugador 1', accessor: 'jugador1Nombre' },
+    { header: 'Jugador 2', accessor: 'jugador2Nombre' },
+    { header: 'Ganador', accessor: 'ganadorNombre' },
+    { header: 'Torneo', accessor: 'torneoNombre' },
     { header: 'Fecha', accessor: 'fecha' },
   ]
 

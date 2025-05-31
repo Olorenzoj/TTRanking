@@ -8,15 +8,18 @@ export default function ClubesSection() {
   const [showForm, setShowForm] = useState(false)
   const [clubes, setClubes] = useState([])
   
-  const fetchClubes = async () => {
-    const response = await fetch('/api/clubes', 
-        {
-            method: 'GET'
-        }
-      )
-    const data = await response.json()
-    setClubes(data)
-  }
+ const fetchClubes = async () => {
+  const response = await fetch('/api/clubes', { method: 'GET' })
+  const data = await response.json()
+  
+  const parsed = data.map((club: any) => ({
+    ...club,
+    jugadoresCount: club._count?.jugadores ?? 0
+  }))
+  
+  setClubes(parsed)
+}
+
   
   useEffect(() => {
     fetchClubes()
@@ -25,7 +28,7 @@ export default function ClubesSection() {
   const columns = [
     { header: 'ID', accessor: 'id', sortable: true },
     { header: 'Nombre', accessor: 'nombre' },
-    { header: 'Jugadores', accessor: '_count.jugadores' },
+    { header: 'Jugadores', accessor: 'jugadoresCount' },
   ]
 
   return (

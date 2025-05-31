@@ -1,11 +1,12 @@
 'use client'
 import { useState, useEffect } from 'react'
-import JugadorForm from '@/components/forms/JugadorForm'
 import DataTable from '@/components/ui/DataTable'
 import { ArrowDownIcon, PlusIcon } from '@heroicons/react/24/outline'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 type Jugador = {
-  id: number
+  ranking: number
   nombre: string
   elo: number
   clubes?: { nombre?: string }
@@ -13,7 +14,7 @@ type Jugador = {
 }
 
 
-export default function JugadoresSection({ className = '' }) {
+export default function RankingSection({ className = '' }) {
   const [showForm, setShowForm] = useState(false)
   const [jugadores, setJugadores] = useState<Jugador[]>([])
 
@@ -24,7 +25,12 @@ export default function JugadoresSection({ className = '' }) {
       }
     )
     const data = await response.json()
-    setJugadores(data)
+    const sortedData = data.sort((a: Jugador, b: Jugador)=> b.elo - a.elo)
+    .map((jugador: Jugador, index: number) => ({
+    ...jugador,
+    ranking: index + 1
+  }))
+    setJugadores(sortedData)
   }
 
   useEffect(() => {
@@ -54,10 +60,42 @@ export default function JugadoresSection({ className = '' }) {
     }
   }
 
+  const handleDownloadPDF = () => {
+    const date = new Date()
+    const year = date.getFullYear()
+    const month = date.getMonth()
+    const doc = new jsPDF()
+    const header = () => {
+      doc.setFontSize(28)
+      doc.setTextColor(40)
+      doc.text('Advanced Table Tennis Academy', 15, 15)
+
+      doc.setLineWidth(0.5)
+      doc.line(22.5, 22.5, 200, 22.5)
+
+    }
+
+    header()
+    doc.setFontSize(15)
+    doc.text(`Ranking Atta ${getCurrentMonth(month, year, true)}`, 15, 30)
+    autoTable(doc, {
+      startY: 35,
+      head: [['Ranking', 'Nombre', 'Puntos', 'Club', 'Categoría']],
+      body: jugadores.map(j => [
+        j.ranking,
+        j.nombre,
+        j.elo,
+        j.clubes?.nombre || 'Sin club',
+        j.categorias?.nombre || 'Sin categoría'
+      ])
+    })
+    doc.save(`Ranking_Atta_${getCurrentMonth(month, year, false)}.pdf`)
+  }
+
   const columns = [
-    { header: 'ID', accessor: 'id', sortable: true },
+    { header: 'Ranking', accessor: 'ranking', sortable: true },
     { header: 'Nombre', accessor: 'nombre', sortable: true },
-    { header: 'ELO', accessor: 'elo', sortable: true },
+    { header: 'Puntaje', accessor: 'elo', sortable: true },
     {
       header: 'Club',
       accessor: 'clubes',
@@ -77,29 +115,19 @@ export default function JugadoresSection({ className = '' }) {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Jugadores</h2>
         <button
-          onClick={() => setShowForm(true)}
-          className="bg-blue-600 text-white px-3 py-1 rounded flex items-center"
+          onClick={handleDownloadPDF}
+          className="bg-green-600 text-white px-3 py-1 rounded flex items-center ml-2"
         >
-          <PlusIcon className="h-4 w-4 mr-1" />
-          Nuevo
+          <ArrowDownIcon className="h-4 w-4 mr-1" />
+          PDF
         </button>
       </div>
 
-      {showForm ? (
-        <JugadorForm
-          onSuccessAction={() => {
-            setShowForm(false)
-            fetchJugadores()
-          }}
-          onCancelAction={() => setShowForm(false)}
-        />
-      ) : (
         <DataTable
           columns={columns}
           data={jugadores}
           onRowClick={(row) => console.log(row)}
         />
-      )}
     </div>
   )
 }
