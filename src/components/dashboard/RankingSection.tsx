@@ -77,58 +77,71 @@ export default function RankingSection({ className = '' }) {
     }
   }
 
-  const handleDownloadPDF = () => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const doc = new jsPDF();
+  const handleDownloadPDF = async () => {
+  setIsLoading(true)
+  try {
+    const response = await fetch('/api/ranking?all=true')
 
-    const img = new Image();
-    img.src = '/Logo.png';
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+
+    const date = new Date()
+    const year = date.getFullYear()
+    const month = date.getMonth()
+    const doc = new jsPDF()
+
+    const img = new Image()
+    img.src = '/Logo.png'
 
     img.onload = () => {
-      const pdfWidth = 210;
+      const pdfWidth = 210
+      const logoWidth = 70
+      const logoHeight = 45
+      const logoX = (pdfWidth - logoWidth) / 2
+      const logoY = 1
 
-      // Medidas del logo
-      const logoWidth = 70;
-      const logoHeight = 45;
-      const logoX = (pdfWidth - logoWidth) / 2;
-      const logoY = 1;
+      doc.addImage(img, 'PNG', logoX, logoY, logoWidth, logoHeight)
 
-      doc.addImage(img, 'PNG', logoX, logoY, logoWidth, logoHeight);
+      const lineY = logoY + logoHeight + 5
+      doc.setLineWidth(0.5)
+      doc.line(15, lineY, 195, lineY)
 
-      const lineY = logoY + logoHeight + 5;
-      doc.setLineWidth(0.5);
-      doc.line(15, lineY, 195, lineY);
+      doc.setFontSize(18)
+      const title = `Ranking Atta ${getCurrentMonth(month, year, true)}`
+      const titleWidth = doc.getTextWidth(title)
+      const titleX = (pdfWidth - titleWidth) / 2
+      const titleY = lineY + 8
 
-      doc.setFontSize(18);
-      const title = `Ranking Atta ${getCurrentMonth(month, year, true)}`;
-      const titleWidth = doc.getTextWidth(title);
-      const titleX = (pdfWidth - titleWidth) / 2;
-      const titleY = lineY + 8;
+      doc.text(title, titleX, titleY)
 
-      doc.text(title, titleX, titleY);
-
-      // Tabla
       autoTable(doc, {
         startY: titleY + 5,
         head: [['Ranking', 'Nombre', 'Puntos', 'Club', 'Categoría']],
-        body: jugadores.map(j => [
-          j.ranking,
+        body: data.jugadores.map((j: Jugador, index: number) => [
+          index + 1,
           j.nombre,
           j.elo,
           j.clubes?.nombre || 'Sin club',
           j.categorias?.nombre || 'Sin categoría'
         ])
-      });
+      })
 
-      doc.save(`Ranking_Atta_${getCurrentMonth(month, year, false)}.pdf`);
-    };
+      doc.save(`Ranking_Atta_${getCurrentMonth(month, year, false)}.pdf`)
+    }
 
     img.onerror = () => {
-      alert('Error loading logo image for the PDF.');
-    };
-  };
+      alert('Error loading logo image for the PDF.')
+    }
+  } catch (error) {
+    console.error('Error al generar PDF:', error)
+  } finally {
+    setIsLoading(false)
+  }
+}
+
 
   const columns = [
     { header: 'Ranking', accessor: 'ranking', sortable: true },

@@ -1,5 +1,4 @@
-'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { toast } from 'react-hot-toast'
 
 interface Jugador {
@@ -11,14 +10,13 @@ interface Jugador {
 interface Torneo {
   id: number
   nombre: string
-  fecha: string // o Date si ya lo estás transformando
+  fecha: string
 }
 
 interface PartidoFormProps {
   onSuccessAction: () => void
   onCancelAction: () => void
 }
-
 
 export default function PartidoForm({ onSuccessAction, onCancelAction }: PartidoFormProps) {
   const [jugador1Id, setJugador1Id] = useState('')
@@ -29,27 +27,66 @@ export default function PartidoForm({ onSuccessAction, onCancelAction }: Partido
   const [tipoEspecial, setTipoEspecial] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [jugadores, setJugadores] = useState<Jugador[]>([])
-const [torneos, setTorneos] = useState<Torneo[]>([])
+  const [torneos, setTorneos] = useState<Torneo[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
+  // States for searchable dropdowns
+  const [jugador1Search, setJugador1Search] = useState('')
+  const [jugador2Search, setJugador2Search] = useState('')
+  const [showPlayer1Results, setShowPlayer1Results] = useState(false)
+  const [showPlayer2Results, setShowPlayer2Results] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
-      const [jugadoresRes, torneosRes] = await Promise.all([
-        fetch('/api/jugadores'),
-        fetch('/api/torneos')
-      ])
-      
-      const jugadoresData = await jugadoresRes.json()
-      const torneosData = await torneosRes.json()
-      
-      setJugadores(jugadoresData)
-      setTorneos(torneosData)
+      try {
+        setIsLoading(true)
+        const [jugadoresRes, torneosRes] = await Promise.all([
+          fetch('/api/jugadores?all=true'),
+          fetch('/api/torneos')
+        ])
+
+        // FIX: Handle jugadores response format
+        const jugadoresData = await jugadoresRes.json()
+        const jugadoresArray = jugadoresData.jugadores || jugadoresData.data || []
+        setJugadores(Array.isArray(jugadoresArray) ? jugadoresArray : [])
+
+        // FIX: Handle torneos response format
+        const torneosData = await torneosRes.json()
+        const torneosArray = torneosData.torneos || torneosData.data || []
+        setTorneos(Array.isArray(torneosArray) ? torneosArray : [])
+
+      } catch (error) {
+        console.error('Fetch error:', error)
+        toast.error('Error cargando datos')
+        setJugadores([])
+        setTorneos([])
+      } finally {
+        setIsLoading(false)
+      }
     }
-    
+
     fetchData()
   }, [])
-  
-  // Actualizar ganador cuando cambian los jugadores
+
+  // Filter players based on search input
+  const filteredPlayers1 = useMemo(() => {
+  if (!jugador1Search) return jugadores
+  return jugadores.filter(player =>
+    player.nombre.toLowerCase().includes(jugador1Search.toLowerCase()) ||
+    player.elo.toString().includes(jugador1Search)
+  )
+}, [jugadores, jugador1Search])
+
+  const filteredPlayers2 = useMemo(() => {
+    if (!jugador2Search) return jugadores.filter(j => j.id !== parseInt(jugador1Id || '0'))
+    return jugadores
+      .filter(j => j.id !== parseInt(jugador1Id || '0'))
+      .filter(player =>
+        player.nombre.toLowerCase().includes(jugador2Search.toLowerCase()) ||
+        player.elo.toString().includes(jugador2Search))
+  }, [jugadores, jugador2Search, jugador1Id])
+
+  // Update winner when players change
   useEffect(() => {
     if (jugador1Id && !jugador2Id) {
       setGanadorId(jugador1Id)
@@ -59,7 +96,7 @@ const [torneos, setTorneos] = useState<Torneo[]>([])
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
-    
+
     const partidoData = {
       jugador1_id: jugador1Id,
       jugador2_id: jugador2Id || null,
@@ -68,7 +105,7 @@ const [torneos, setTorneos] = useState<Torneo[]>([])
       ronda: ronda || null,
       tipo_especial: tipoEspecial || null
     }
-    
+
     try {
       const response = await fetch('/api/partidos', {
         method: 'POST',
@@ -77,7 +114,7 @@ const [torneos, setTorneos] = useState<Torneo[]>([])
         },
         body: JSON.stringify(partidoData)
       })
-      
+
       if (response.ok) {
         toast.success('Partido registrado exitosamente')
         onSuccessAction()
@@ -104,59 +141,110 @@ const [torneos, setTorneos] = useState<Torneo[]>([])
           onChange={(e) => setTorneoId(e.target.value)}
           className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
           required
+          disabled={isLoading}
         >
           <option value="">Selecciona un torneo</option>
-          {torneos.map(torneo => (
-            <option key={torneo.id} value={torneo.id}>
-              {torneo.nombre} - {new Date(torneo.fecha).toLocaleDateString()}
-            </option>
-          ))}
+          {isLoading ? (
+            <option>Cargando torneos...</option>
+          ) : torneos.length === 0 ? (
+            <option>No hay torneos disponibles</option>
+          ) : (
+            torneos.map(torneo => (
+              <option key={torneo.id} value={torneo.id}>
+                {torneo.nombre} - {new Date(torneo.fecha).toLocaleDateString()}
+              </option>
+            ))
+          )}
         </select>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-4">
-        <div>
+        {/* Player 1 Searchable Dropdown */}
+        <div className="relative">
           <label htmlFor="jugador1" className="block text-sm font-medium text-gray-700">
             Jugador 1
           </label>
-          <select
+          <input
+            type="text"
             id="jugador1"
-            value={jugador1Id}
-            onChange={(e) => setJugador1Id(e.target.value)}
+            value={jugador1Search}
+            onChange={(e) => {
+              setJugador1Search(e.target.value)
+              setShowPlayer1Results(true)
+            }}
+            onFocus={() => setShowPlayer1Results(true)}
+            onBlur={() => setTimeout(() => setShowPlayer1Results(false), 200)}
+            placeholder="Buscar jugador..."
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
             required
-          >
-            <option value="">Selecciona un jugador</option>
-            {jugadores.map(jugador => (
-              <option key={jugador.id} value={jugador.id}>
-                {jugador.nombre} ({jugador.elo})
-              </option>
-            ))}
-          </select>
+          />
+          {showPlayer1Results && filteredPlayers1.length > 0 && (
+            <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+              {filteredPlayers1.map(jugador => (
+                <div
+                  key={jugador.id}
+                  className="p-2 hover:bg-gray-100 cursor-pointer"
+                  onMouseDown={() => {
+                    setJugador1Id(jugador.id.toString())
+                    setJugador1Search(jugador.nombre)
+                    setShowPlayer1Results(false)
+                  }}
+                >
+                  id({jugador.id}) {jugador.nombre} {jugador.elo} puntos
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-        
-        <div>
+
+        {/* Player 2 Searchable Dropdown */}
+        <div className="relative">
           <label htmlFor="jugador2" className="block text-sm font-medium text-gray-700">
             Jugador 2 (opcional)
           </label>
-          <select
+          <input
+            type="text"
             id="jugador2"
-            value={jugador2Id}
-            onChange={(e) => setJugador2Id(e.target.value)}
+            value={jugador2Search}
+            onChange={(e) => {
+              setJugador2Search(e.target.value)
+              setShowPlayer2Results(true)
+            }}
+            onFocus={() => setShowPlayer2Results(true)}
+            onBlur={() => setTimeout(() => setShowPlayer2Results(false), 200)}
+            placeholder="Buscar jugador..."
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-          >
-            <option value="">Bye/Forfeit</option>
-            {jugadores
-              .filter(j => j.id !== parseInt(jugador1Id || '0'))
-              .map(jugador => (
-                <option key={jugador.id} value={jugador.id}>
-                  {jugador.nombre} ({jugador.elo})
-                </option>
+          />
+          {showPlayer2Results && filteredPlayers2.length > 0 && (
+            <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+              <div
+                className="p-2 hover:bg-gray-100 cursor-pointer"
+                onMouseDown={() => {
+                  setJugador2Id('')
+                  setJugador2Search('')
+                  setShowPlayer2Results(false)
+                }}
+              >
+                Bye/Forfeit
+              </div>
+              {filteredPlayers2.map(jugador => (
+                <div
+                  key={jugador.id}
+                  className="p-2 hover:bg-gray-100 cursor-pointer"
+                  onMouseDown={() => {
+                    setJugador2Id(jugador.id.toString())
+                    setJugador2Search(jugador.nombre)
+                    setShowPlayer2Results(false)
+                  }}
+                >
+                 id({jugador.id}) {jugador.nombre} {jugador.elo} puntos 
+                </div>
               ))}
-          </select>
+            </div>
+          )}
         </div>
       </div>
-      
+
       {jugador2Id && (
         <div>
           <label htmlFor="ganador" className="block text-sm font-medium text-gray-700">
@@ -179,7 +267,7 @@ const [torneos, setTorneos] = useState<Torneo[]>([])
           </select>
         </div>
       )}
-      
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="ronda" className="block text-sm font-medium text-gray-700">
@@ -202,7 +290,7 @@ const [torneos, setTorneos] = useState<Torneo[]>([])
             <option value="Campeón">Campeón</option>
           </select>
         </div>
-        
+
         <div>
           <label htmlFor="tipo_especial" className="block text-sm font-medium text-gray-700">
             Tipo Especial
@@ -219,7 +307,7 @@ const [torneos, setTorneos] = useState<Torneo[]>([])
           </select>
         </div>
       </div>
-      
+
       <div className="flex justify-end space-x-2">
         <button
           type="button"

@@ -11,6 +11,7 @@ type Partido = {
   jugador2Nombre: string
   ganadorNombre: string
   torneoNombre: string
+  ronda: string,
   fecha: string
 }
 
@@ -29,29 +30,31 @@ export default function PartidosSection() {
   const [isLoading, setIsLoading] = useState(false)
   
   const fetchPartidos = async (page: number, limit: number) => {
-    try {
-      setIsLoading(true)
-      setError(null)
-      const data = await safeFetch(`/api/partidos?page=${page}&limit=${limit}`)
-      
-      const parsed = data.partidos.map((partido: any) => ({
-        id: partido.id,
-        jugador1Nombre: partido.jugador1?.nombre ?? 'N/A',
-        jugador2Nombre: partido.jugador2?.nombre ?? 'N/A',
-        ganadorNombre: partido.ganador?.nombre ?? 'N/A',
-        torneoNombre: partido.torneo?.nombre ?? 'N/A',
-        fecha: new Date(partido.fecha).toLocaleDateString()
-      }))
-      
-      setPartidos(parsed)
-      setTotalItems(data.total)
-    } catch (err) {
-      console.error('Failed to fetch matches:', err)
-      setError('Error al cargar partidos. Intente nuevamente.')
-    } finally {
-      setIsLoading(false)
-    }
+  try {
+    setIsLoading(true)
+    setError(null)
+    const data = await safeFetch(`/api/partidos?page=${page}&limit=${limit}`)
+    
+    // Usa directamente las propiedades que vienen del backend
+    const parsed = data.partidos.map((partido: any) => ({
+      id: partido.id,
+      jugador1Nombre: partido.jugador1Nombre, // ✅ Usar la propiedad directa
+      jugador2Nombre: partido.jugador2Nombre,
+      ganadorNombre: partido.ganadorNombre,
+      torneoNombre: partido.torneoNombre,
+      ronda: partido.ronda,
+      fecha: partido.fecha // ✅ Ya viene formateada desde el backend
+    }))
+    
+    setPartidos(parsed)
+    setTotalItems(data.total)
+  } catch (err) {
+    console.error('Failed to fetch matches:', err)
+    setError('Error al cargar partidos. Intente nuevamente.')
+  } finally {
+    setIsLoading(false)
   }
+}
   
   useEffect(() => {
     fetchPartidos(currentPage, itemsPerPage)
@@ -62,6 +65,7 @@ export default function PartidosSection() {
     { header: 'Jugador 1', accessor: 'jugador1Nombre' },
     { header: 'Jugador 2', accessor: 'jugador2Nombre' },
     { header: 'Ganador', accessor: 'ganadorNombre' },
+    {header: 'Ronda', accessor: 'ronda'},
     { header: 'Torneo', accessor: 'torneoNombre' },
     { header: 'Fecha', accessor: 'fecha' },
   ]
