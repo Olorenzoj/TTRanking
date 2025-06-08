@@ -211,11 +211,7 @@ END
 $$
 DELIMITER ;
 
--- --------------------------------------------------------
 
---
--- Table structure for table `torneos`
---
 
 CREATE TABLE `torneos` (
   `id` int NOT NULL,
@@ -224,22 +220,13 @@ CREATE TABLE `torneos` (
   `ubicacion` varchar(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- --------------------------------------------------------
 
---
--- Table structure for table `torneo_categorias`
---
 
 CREATE TABLE `torneo_categorias` (
   `torneo_id` int NOT NULL,
   `categoria_id` int NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `_prisma_migrations`
---
 
 CREATE TABLE `_prisma_migrations` (
   `id` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -252,27 +239,16 @@ CREATE TABLE `_prisma_migrations` (
   `applied_steps_count` int UNSIGNED NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Indexes for dumped tables
---
 
---
--- Indexes for table `categorias`
---
 ALTER TABLE `categorias`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `nombre` (`nombre`);
 
---
--- Indexes for table `clubes`
---
 ALTER TABLE `clubes`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `nombre` (`nombre`);
 
---
--- Indexes for table `historial_categorias`
---
+
 ALTER TABLE `historial_categorias`
   ADD PRIMARY KEY (`id`),
   ADD KEY `jugador_id` (`jugador_id`),
@@ -280,27 +256,21 @@ ALTER TABLE `historial_categorias`
   ADD KEY `categoria_nueva` (`categoria_nueva`),
   ADD KEY `torneo_id` (`torneo_id`);
 
---
--- Indexes for table `jugadores`
---
+
 ALTER TABLE `jugadores`
   ADD PRIMARY KEY (`id`),
   ADD KEY `club_id` (`club_id`),
   ADD KEY `categoria_id` (`categoria_id`),
   ADD KEY `ultimo_torneo_id` (`ultimo_torneo_id`);
 
---
--- Indexes for table `participaciones`
---
+
 ALTER TABLE `participaciones`
   ADD PRIMARY KEY (`id`),
   ADD KEY `jugador_id` (`jugador_id`),
   ADD KEY `torneo_id` (`torneo_id`),
   ADD KEY `categoria_id` (`categoria_id`);
 
---
--- Indexes for table `partidos`
---
+
 ALTER TABLE `partidos`
   ADD PRIMARY KEY (`id`),
   ADD KEY `jugador1_id` (`jugador1_id`),
@@ -308,50 +278,32 @@ ALTER TABLE `partidos`
   ADD KEY `ganador_id` (`ganador_id`),
   ADD KEY `torneo_id` (`torneo_id`);
 
---
--- Indexes for table `torneos`
---
+
 ALTER TABLE `torneos`
   ADD PRIMARY KEY (`id`);
 
---
--- Indexes for table `torneo_categorias`
---
+
 ALTER TABLE `torneo_categorias`
   ADD PRIMARY KEY (`torneo_id`,`categoria_id`),
   ADD KEY `categoria_id` (`categoria_id`);
 
---
--- Indexes for table `_prisma_migrations`
---
+
 ALTER TABLE `_prisma_migrations`
   ADD PRIMARY KEY (`id`);
 
---
--- AUTO_INCREMENT for dumped tables
---
 
---
--- AUTO_INCREMENT for table `categorias`
---
 ALTER TABLE `categorias`
   MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `clubes`
---
+
 ALTER TABLE `clubes`
   MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `historial_categorias`
---
+
 ALTER TABLE `historial_categorias`
   MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT for table `jugadores`
---
+
 ALTER TABLE `jugadores`
   MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
