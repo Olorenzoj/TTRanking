@@ -5,11 +5,13 @@ from mysql.connector import Error
 # Configuración de la base de datos
 config = {
     'user': 'root',
-    'password': '123',
-    'host': 'localhost',
-    'database': 'Atta',
+    'password': 'XJrvIIQDhzDxtCOWvdpxhQazsraYixRV',
+    'host': 'hopper.proxy.rlwy.net',
+    'port': 36071,
+    'database': 'railway',
     'raise_on_warnings': True
 }
+
 
 # Función mejorada para calcular el ELO
 def calcular_elo(formula):
@@ -45,7 +47,7 @@ categorias_info = {
     'Cuarta': {'id': 4, 'elo_inicial': 1400}
 }
 
-excel_path = '/mnt/System/Descargas/ranking.xlsx'
+excel_path = 'ranking.xlsx'
 
 try:
     # Conectar a la base de datos
