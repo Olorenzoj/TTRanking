@@ -111,4 +111,5 @@ export default function JugadoresSection({ className = '' }: { className?: strin
       )}
     </div>
   );
+  
 }

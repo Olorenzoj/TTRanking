@@ -5,13 +5,11 @@ from mysql.connector import Error
 # Configuración de la base de datos
 config = {
     'user': 'root',
-    'password': 'XJrvIIQDhzDxtCOWvdpxhQazsraYixRV',
-    'host': 'hopper.proxy.rlwy.net',
-    'port': 36071,
-    'database': 'railway',
+    'password': '',
+    'host': 'localhost',
+    'database': 'ATTA',
     'raise_on_warnings': True
 }
-
 
 # Función mejorada para calcular el ELO
 def calcular_elo(formula):
@@ -41,7 +39,7 @@ def calcular_elo(formula):
 
 # Información de categorías (id y elo_inicial)
 categorias_info = {
-    'Primera': {'id': 1, 'elo_inicial': 2000},
+    'Primera': {'id': 1, 'elo_inicial': 1000},
     'Segunda': {'id': 2, 'elo_inicial': 1800},
     'Tercera': {'id': 3, 'elo_inicial': 1600},
     'Cuarta': {'id': 4, 'elo_inicial': 1400}
