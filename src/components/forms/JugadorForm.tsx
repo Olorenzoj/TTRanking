@@ -30,23 +30,30 @@ const [categorias, setCategorias] = useState<Categoria[]>([])
 
   useEffect(() => {
     // Cargar clubes y categorías
-    const fetchData = async () => {
-      const [clubesRes, categoriasRes] = await Promise.all([
-        fetch('/api/clubes'),
-        fetch('/api/categorias')
-      ])
-      
-      const clubesData = await clubesRes.json()
-      const categoriasData = await categoriasRes.json()
-      
-      setClubes(clubesData)
-      setCategorias(categoriasData)
-      
-      // Seleccionar primera categoría por defecto
-      if (categoriasData.length > 0) {
-        setCategoriaId(categoriasData[0].id.toString())
-      }
+    // In JugadorForm.tsx, update the fetchData function:
+const fetchData = async () => {
+  try {
+    const [clubesRes, categoriasRes] = await Promise.all([
+      fetch('/api/clubes'),
+      fetch('/api/categorias')
+    ]);
+    
+    const clubesData = await clubesRes.json();
+    const categoriasData = await categoriasRes.json();
+    
+    // Extract array from API response
+    setClubes(clubesData.clubes || []); // Use 'clubes' property
+    setCategorias(categoriasData || []); 
+    
+    if (categoriasData.length > 0) {
+      setCategoriaId(categoriasData[0].id.toString());
     }
+  } catch (error) {
+    console.error('Fetch error:', error);
+    setClubes([]);
+    setCategorias([]);
+  }
+};
     
     fetchData()
   }, [])
