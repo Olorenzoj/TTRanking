@@ -5,9 +5,10 @@ from mysql.connector import Error
 # Configuración de la base de datos
 config = {
     'user': 'root',
-    'password': '',
-    'host': 'localhost',
-    'database': 'ATTA',
+    'password': 'ognaOrFgBnUrIcCklkrHrtadSgkpJyEo',
+    'host': 'switchback.proxy.rlwy.net',
+    'port': '35971',
+    'database': 'railway',
     'raise_on_warnings': True
 }
 
@@ -45,7 +46,7 @@ categorias_info = {
     'Cuarta': {'id': 4, 'elo_inicial': 1400}
 }
 
-excel_path = 'ranking.xlsx'
+excel_path = '/home/oscar/ranking-atta/ranking.xlsx'
 
 try:
     # Conectar a la base de datos
