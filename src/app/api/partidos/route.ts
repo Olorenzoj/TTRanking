@@ -1,19 +1,22 @@
 import prisma from '@/lib/prisma'
 import { NextResponse } from 'next/server'
-import type { partidos_ronda } from '@prisma/client' // ✅ Importar el enum
-
+import type { partidos_ronda } from '@prisma/client'
 function mapRondaToEnum(valor: string): partidos_ronda {
   switch (valor) {
     case "32avos": return "treinta_y_dos_avos";
     case "16avos": return "dieciseis_avos";
+    case "Octavos": return "Octavos";
+    case "Cuartos": return "Cuartos";
+    case "Semifinal": return "Semifinal";
+    case "Final": return "Final";
     case "Campeón": return "Campeon";
-    default: return valor as partidos_ronda; // ✅ Cast explícito
+    case "Grupos": return "Grupos";
+    default: return "Grupos";
   }
 }
-
 function mapEnumToRondaValor(valor: partidos_ronda | null): string {
   if (valor === null) return 'N/A';
-  
+
   switch (valor) {
     case "treinta_y_dos_avos": return "32avos";
     case "dieciseis_avos": return "16avos";
@@ -54,43 +57,78 @@ export async function GET(request: Request) {
     }));
 
     return NextResponse.json({ partidos: partidosFormateados, total });
-  } catch (error) {
-    console.error('Error fetching matches:', error);
+    // En la función POST
+  } catch (error: any) {
+    // Intenta parsear el body para tener más contexto en el log
+    const body = await request.text().catch(() => 'No se pudo leer el body');
+
+    console.error('Error al crear el partido:', {
+      message: error.message,
+      stack: error.stack,
+      receivedData: body, // Loguea lo que recibiste
+    });
+
     return NextResponse.json(
-      { error: "Error al obtener partidos" },
-      { status: 500 }
+        { error: "Error al crear partido", details: error.message },
+        { status: 500 }
     );
   }
+
 }
 
 export async function POST(request: Request) {
+  let data;
   try {
-    const data = await request.json();
+    data = await request.json();
+    const { jugador1_id, jugador2_id, ganador_id, torneo_id, ronda } = data;
+    if (!ronda) {
+      return NextResponse.json({ error: "El campo 'ronda' es requerido" }, { status: 400 });
+    }
+    if (!jugador1_id || !ganador_id || !torneo_id) {
+      return NextResponse.json({ error: "Los campos 'jugador1_id', 'ganador_id' y 'torneo_id' son requeridos" }, { status: 400 });
+    }
 
-    if (!data.ronda) {
-      return NextResponse.json({ error: "La ronda es requerida" }, { status: 400 });
+    const j1 = parseInt(jugador1_id);
+    const j2 = jugador2_id ? parseInt(jugador2_id) : null;
+    const g = parseInt(ganador_id);
+    const t = parseInt(torneo_id);
+
+    if (isNaN(j1) || (jugador2_id && isNaN(j2 as number)) || isNaN(g) || isNaN(t)) {
+      return NextResponse.json({ error: "Los IDs deben ser números válidos." }, { status: 400 });
     }
 
     const nuevoPartido = await prisma.partidos.create({
       data: {
-        jugador1_id: parseInt(data.jugador1_id),
-        jugador2_id: data.jugador2_id ? parseInt(data.jugador2_id) : null,
-        ganador_id: parseInt(data.ganador_id),
-        torneo_id: parseInt(data.torneo_id),
-        ronda: mapRondaToEnum(data.ronda),
+        jugador1_id: j1,
+        jugador2_id: j2,
+        ganador_id: g,
+        torneo_id: t,
+        ronda: mapRondaToEnum(ronda),
         tipo_especial: data.tipo_especial || null
       }
     });
 
     return NextResponse.json(nuevoPartido, { status: 201 });
+
   } catch (error: any) {
-    console.error('Error creating match:', error);
+
+    console.error('Error al crear el partido:', {
+      message: error.message,
+      stack: error.stack,
+      receivedData: data || 'No se pudo leer el body del request',
+    });
+
+    const errorMessage = error.code === 'P2003'
+        ? 'Error de clave foránea: Uno de los IDs de jugador o torneo no existe.'
+        : 'Error al crear el partido en la base de datos.';
+
     return NextResponse.json(
-      { error: "Error al crear partido", details: error.message },
-      { status: 500 }
+        { error: errorMessage, details: error.message },
+        { status: 500 }
     );
   }
 }
+
 
 export async function OPTIONS() {
   return new NextResponse(null, {
