@@ -4,9 +4,24 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
+    const all = searchParams.get('all') === 'true'
     const page = Number(searchParams.get('page') || 1)
     const limit = Number(searchParams.get('limit') || 10)
     const skip = (page - 1) * limit
+
+    //skippear paginacion cuando se quiere traer todos los datos
+    if (all){
+      const clubes = await prisma.clubes.findMany({
+        select: {
+          id: true,
+          nombre: true
+        },
+        orderBy: {
+          nombre: 'asc'
+        }
+      })
+      return NextResponse.json({clubes: clubes ?? []})
+    }
 
     const [clubes, total] = await Promise.all([
       prisma.clubes.findMany({
