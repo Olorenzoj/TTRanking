@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, FormEvent } from 'react'
+import { useState, useEffect, FormEvent, useMemo } from 'react'
 import { toast } from 'react-hot-toast'
 
 interface Club {
@@ -12,13 +12,12 @@ interface Categoria {
   nombre: string;
 }
 
-
 interface JugadorFormProps {
   onSuccessAction: () => void;
   onCancelAction: () => void;
 }
 
-export default function ClubForm({ onSuccessAction, onCancelAction }: JugadorFormProps) {
+export default function JugadorForm({ onSuccessAction, onCancelAction }: JugadorFormProps) {
   const [nombre, setNombre] = useState('')
   const [clubId, setClubId] = useState('')
   const [categoriaId, setCategoriaId] = useState('')
@@ -27,36 +26,43 @@ export default function ClubForm({ onSuccessAction, onCancelAction }: JugadorFor
   const [clubes, setClubes] = useState<Club[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
 
+  // States for searchable dropdown
+  const [clubSearch, setClubSearch] = useState('')
+  const [showClubResults, setShowClubResults] = useState(false)
 
   useEffect(() => {
-    // Cargar clubes y categorías
-    // In JugadorForm.tsx, update the fetchData function:
     const fetchData = async () => {
       try {
         const [clubesRes, categoriasRes] = await Promise.all([
-          fetch('/api/clubes'),
+          fetch('/api/clubes?all=true'),
           fetch('/api/categorias')
-        ]);
+        ])
 
-        const clubesData = await clubesRes.json();
-        const categoriasData = await categoriasRes.json();
+        const clubesData = await clubesRes.json()
+        const categoriasData = await categoriasRes.json()
 
-        // Extract array from API response
-        setClubes(clubesData.clubes || []); // Use 'clubes' property
-        setCategorias(categoriasData || []);
+        setClubes(clubesData.clubes || [])
+        setCategorias(categoriasData || [])
 
         if (categoriasData.length > 0) {
-          setCategoriaId(categoriasData[0].id.toString());
+          setCategoriaId(categoriasData[0].id.toString())
         }
       } catch (error) {
-        console.error('Fetch error:', error);
-        setClubes([]);
-        setCategorias([]);
+        console.error('Fetch error:', error)
+        toast.error('Error al cargar datos')
       }
-    };
+    }
 
     fetchData()
   }, [])
+
+  const filteredClub = useMemo(() => {
+    if (!clubSearch) return clubes
+    return clubes.filter(club =>
+        club.nombre.toLowerCase().includes(clubSearch.toLowerCase()) ||
+        club.id.toString().includes(clubSearch)
+    )
+  }, [clubes, clubSearch])
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -72,9 +78,7 @@ export default function ClubForm({ onSuccessAction, onCancelAction }: JugadorFor
     try {
       const response = await fetch('/api/jugadores', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(jugadorData)
       })
 
@@ -108,24 +112,42 @@ export default function ClubForm({ onSuccessAction, onCancelAction }: JugadorFor
           />
         </div>
 
-        <div>
+        {/* Club Searchable Dropdown */}
+        <div className="relative">
           <label htmlFor="club" className="block text-sm font-medium text-gray-700">
             Club
           </label>
-          <select
+          <input
+              type="text"
               id="club"
-              value={clubId}
-              onChange={(e) => setClubId(e.target.value)}
+              value={clubSearch}
+              onChange={(e) => {
+                setClubSearch(e.target.value)
+                setShowClubResults(true)
+              }}
+              onFocus={() => setShowClubResults(true)}
+              onBlur={() => setTimeout(() => setShowClubResults(false), 200)}
+              placeholder="Buscar club..."
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
               required
-          >
-            <option value="">Selecciona un club</option>
-            {clubes.map(club => (
-                <option key={club.id} value={club.id}>
-                  {club.nombre}
-                </option>
-            ))}
-          </select>
+          />
+          {showClubResults && filteredClub.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                {filteredClub.map((club) => (
+                    <div
+                        key={club.id}
+                        className="p-2 hover:bg-gray-100 cursor-pointer"
+                        onMouseDown={() => {
+                          setClubId(club.id.toString())
+                          setClubSearch(club.nombre)
+                          setShowClubResults(false)
+                        }}
+                    >
+                      {club.nombre}
+                    </div>
+                ))}
+              </div>
+          )}
         </div>
 
         <div>
