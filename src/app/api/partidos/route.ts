@@ -97,22 +97,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Los IDs deben ser números válidos." }, { status: 400 });
     }
 
-    const nuevoPartido = await prisma.partidos.create({
-      data: {
-        jugador1_id: j1,
-        jugador2_id: j2,
-        ganador_id: g,
-        torneo_id: t,
-        ronda: mapRondaToEnum(ronda),
-        tipo_especial: data.tipo_especial || null
-      }
-    });
+    await prisma.$executeRawUnsafe(`
+      CALL procesar_partido(
+        ${j1},
+        ${j2 !== null ? j2 : 'NULL'},
+        ${g},
+        ${t},
+        '${mapRondaToEnum(ronda)}',
+        ${data.tipo_especial ? `'${data.tipo_especial}'` : 'NULL'}
+      )
+    `);
 
-    return NextResponse.json(nuevoPartido, { status: 201 });
+    return NextResponse.json({ message: "Partido procesado exitosamente" }, { status: 201 });
 
   } catch (error: any) {
-
-    console.error('Error al crear el partido:', {
+    console.error('Error al procesar el partido:', {
       message: error.message,
       stack: error.stack,
       receivedData: data || 'No se pudo leer el body del request',
@@ -120,7 +119,7 @@ export async function POST(request: Request) {
 
     const errorMessage = error.code === 'P2003'
         ? 'Error de clave foránea: Uno de los IDs de jugador o torneo no existe.'
-        : 'Error al crear el partido en la base de datos.';
+        : 'Error al procesar el partido en la base de datos.';
 
     return NextResponse.json(
         { error: errorMessage, details: error.message },
@@ -128,6 +127,7 @@ export async function POST(request: Request) {
     );
   }
 }
+
 
 
 export async function OPTIONS() {

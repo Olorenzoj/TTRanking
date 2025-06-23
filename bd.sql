@@ -579,3 +579,114 @@ ALTER TABLE `torneo_categorias`
     ADD CONSTRAINT `torneo_categorias_ibfk_1` FOREIGN KEY (`torneo_id`) REFERENCES `torneos` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `torneo_categorias_ibfk_2` FOREIGN KEY (`categoria_id`) REFERENCES `categorias` (`id`) ON DELETE CASCADE;
 COMMIT;
+
+
+
+DELIMITER $$
+
+CREATE PROCEDURE `procesar_partido` (
+    IN p_jugador1_id INT,
+    IN p_jugador2_id INT,
+    IN p_ganador_id INT,
+    IN p_torneo_id INT,
+    IN p_ronda VARCHAR(20),
+    IN p_tipo_especial VARCHAR(10)
+)
+BEGIN
+    DECLARE partido_id INT;
+    DECLARE elo_ganador FLOAT;
+    DECLARE elo_perdedor FLOAT;
+    DECLARE cat_ganador INT;
+    DECLARE cat_perdedor INT;
+    DECLARE puntos JSON;
+    DECLARE puntos_ganador FLOAT;
+    DECLARE puntos_perdedor FLOAT;
+    DECLARE puntos_bono FLOAT;
+    DECLARE id_perdedor INT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+BEGIN
+ROLLBACK;
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error al procesar el partido'; -- Corrected
+END;
+
+START TRANSACTION;
+
+-- Insertar el partido
+INSERT INTO partidos (jugador1_id, jugador2_id, ganador_id, torneo_id, ronda, tipo_especial)
+VALUES (p_jugador1_id, p_jugador2_id, p_ganador_id, p_torneo_id, p_ronda, p_tipo_especial);
+
+SET partido_id = LAST_INSERT_ID();
+
+    -- Obtener ELO y categoría del ganador
+SELECT IFNULL(elo, (SELECT elo_inicial FROM categorias WHERE id = categoria_id)), categoria_id
+INTO elo_ganador, cat_ganador
+FROM jugadores
+WHERE id = p_ganador_id;
+
+-- Identificar y obtener info del perdedor
+IF p_jugador2_id IS NOT NULL THEN
+        SET id_perdedor = IF(p_ganador_id = p_jugador1_id, p_jugador2_id, p_jugador1_id);
+
+SELECT IFNULL(elo, (SELECT elo_inicial FROM categorias WHERE id = categoria_id))
+INTO elo_perdedor
+FROM jugadores
+WHERE id = id_perdedor;
+ELSE
+        SET id_perdedor = NULL;
+        SET elo_perdedor = 0;
+END IF;
+
+    -- Calcular puntos ELO
+    SET puntos = calcular_puntos_partido(
+        elo_ganador,
+        elo_perdedor,
+        p_tipo_especial,
+        p_ronda
+    );
+
+    SET puntos_ganador = CAST(JSON_UNQUOTE(JSON_EXTRACT(puntos, '$.ganador')) AS FLOAT);
+    SET puntos_perdedor = CAST(JSON_UNQUOTE(JSON_EXTRACT(puntos, '$.perdedor')) AS FLOAT);
+    SET puntos_bono = CAST(JSON_UNQUOTE(JSON_EXTRACT(puntos, '$.bonificacion')) AS FLOAT);
+
+    -- Actualizar ELO del ganador
+UPDATE jugadores
+SET elo = elo + puntos_ganador,
+    ultimo_torneo_id = p_torneo_id
+WHERE id = p_ganador_id;
+
+-- Participación del ganador
+INSERT INTO participaciones (jugador_id, torneo_id, categoria_id, elo_antes, elo_despues, bonificacion, ronda_alcanzada)
+VALUES (
+           p_ganador_id,
+           p_torneo_id,
+           cat_ganador,
+           elo_ganador,
+           elo_ganador + puntos_ganador,
+           puntos_bono,
+           p_ronda
+       );
+
+-- Procesar perdedor
+IF id_perdedor IS NOT NULL AND p_tipo_especial IS NULL THEN
+SELECT categoria_id INTO cat_perdedor FROM jugadores WHERE id = id_perdedor;
+
+UPDATE jugadores
+SET elo = elo + puntos_perdedor,
+    ultimo_torneo_id = p_torneo_id
+WHERE id = id_perdedor;
+
+INSERT INTO participaciones (jugador_id, torneo_id, categoria_id, elo_antes, elo_despues)
+VALUES (
+           id_perdedor,
+           p_torneo_id,
+           cat_perdedor,
+           elo_perdedor,
+           elo_perdedor + puntos_perdedor
+       );
+END IF;
+
+COMMIT;
+END$$
+
+DELIMITER ;
