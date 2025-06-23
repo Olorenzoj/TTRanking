@@ -245,7 +245,7 @@ export default function PartidoForm({ onSuccessAction, onCancelAction }: Partido
           </div>
         </div>
 
-        {jugador2Id && (
+        {jugador1Id && jugador2Id && (
             <div>
               <label htmlFor="ganador" className="block text-sm font-medium text-gray-700">
                 Ganador
@@ -267,6 +267,7 @@ export default function PartidoForm({ onSuccessAction, onCancelAction }: Partido
               </select>
             </div>
         )}
+
 
         <div className="grid grid-cols-2 gap-4">
           <div>
