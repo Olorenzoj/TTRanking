@@ -14,31 +14,51 @@ type Jugador = {
   categorias?: { nombre?: string }
 }
 
+type Categoria = {
+  id: number
+  nombre: string
+}
+
 export default function RankingSection({ className = '' }) {
   const [jugadores, setJugadores] = useState<Jugador[]>([])
+  const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [selectedCategoriaId, setSelectedCategoriaId] = useState<string>('')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [totalItems, setTotalItems] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
 
+  // Obtener categorías disponibles
+  const fetchCategorias = async () => {
+    try {
+      const response = await fetch('/api/categorias')
+      const data = await response.json()
+      setCategorias(data.categorias)
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+    }
+  }
+
    const fetchJugadores = async (page = 1, limit = 10) => {
     setIsLoading(true)
-    try {
-      const response = await fetch(`/api/ranking?page=${page}&limit=${limit}`)
-      
-      // Verificar si la respuesta es exitosa
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
-      }
-      
-      const data = await response.json()
-      
-      // Calcular ranking global
-      const startRank = (page - 1) * limit + 1
-      const rankedData = data.jugadores.map((jugador: Jugador, index: number) => ({
-        ...jugador,
-        ranking: startRank + index
-      }))
+     try {
+       const url = `/api/ranking?page=${page}&limit=${limit}${
+           selectedCategoriaId ? `&categoriaId=${selectedCategoriaId}` : ''
+       }`
+
+       const response = await fetch(url)
+
+       if (!response.ok) {
+         throw new Error(`Error ${response.status}: ${response.statusText}`)
+       }
+
+       const data = await response.json()
+
+       const startRank = (page - 1) * limit + 1
+       const rankedData = data.jugadores.map((jugador: Jugador, index: number) => ({
+         ...jugador,
+         ranking: startRank + index
+       }))
       
       setJugadores(rankedData)
       setTotalItems(data.total)
@@ -48,10 +68,20 @@ export default function RankingSection({ className = '' }) {
       setIsLoading(false)
     }
   }
+  useEffect(() => {
+    fetchCategorias()
+  }, [])
+
+  useEffect(() => {
+    // Resetear a página 1 cuando cambia la categoría
+    setCurrentPage(1)
+    fetchJugadores(1, itemsPerPage)
+  }, [selectedCategoriaId])
 
   useEffect(() => {
     fetchJugadores(currentPage, itemsPerPage)
   }, [currentPage, itemsPerPage])
+
 
   const getCurrentMonth = (month: number, year: number, formatted: boolean) => {
     const monthMap = [
@@ -71,27 +101,36 @@ export default function RankingSection({ className = '' }) {
     
     if (formatted) {
       const mes = monthMap[month].key
-      return `${mes.toLowerCase()} ${year}`
+      return `${mes} ${year}`
     } else {
       return `${monthMap[month].key}_${year}`
     }
   }
 
   const handleDownloadPDF = async () => {
-  setIsLoading(true)
-  try {
-    const response = await fetch('/api/ranking?all=true')
+    setIsLoading(true)
+    try {
+      const url = `/api/ranking?all=true${
+          selectedCategoriaId ? `&categoriaId=${selectedCategoriaId}` : ''
+      }`
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`)
-    }
+      const response = await fetch(url)
 
-    const data = await response.json()
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`)
+      }
 
-    const date = new Date()
-    const year = date.getFullYear()
-    const month = date.getMonth()
-    const doc = new jsPDF()
+      const data = await response.json()
+      const date = new Date()
+      const year = date.getFullYear()
+      const month = date.getMonth()
+
+      // Obtener nombre de categoría seleccionada
+      const categoriaNombre = selectedCategoriaId
+          ? categorias.find(cat => cat.id === Number(selectedCategoriaId))?.nombre || ''
+          : ''
+
+      const doc = new jsPDF()
 
     const img = new Image()
     img.src = '/Logo.png'
@@ -104,13 +143,13 @@ export default function RankingSection({ className = '' }) {
       const logoY = 1
 
       doc.addImage(img, 'PNG', logoX, logoY, logoWidth, logoHeight)
-
+      const title = `Ranking ATTA ${categoriaNombre ? `${categoriaNombre} CAT - ` : ''}${getCurrentMonth(month, year, true)}`
       const lineY = logoY + logoHeight + 5
       doc.setLineWidth(0.5)
       doc.line(15, lineY, 195, lineY)
 
       doc.setFontSize(18)
-      const title = `Ranking Atta ${getCurrentMonth(month, year, true)}`
+
       const titleWidth = doc.getTextWidth(title)
       const titleX = (pdfWidth - titleWidth) / 2
       const titleY = lineY + 8
@@ -129,7 +168,7 @@ export default function RankingSection({ className = '' }) {
         ])
       })
 
-      doc.save(`Ranking_Atta_${getCurrentMonth(month, year, false)}.pdf`)
+      doc.save(`Ranking_Atta_${categoriaNombre || 'General'}_${getCurrentMonth(month, year, false)}.pdf`)
     }
 
     img.onerror = () => {
@@ -162,29 +201,44 @@ export default function RankingSection({ className = '' }) {
   ]
 
   return (
-    <div className={`bg-white rounded-lg shadow p-4 ${className}`}>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold">Ranking de Jugadores</h2>
-        <button
-          onClick={handleDownloadPDF}
-          className="bg-green-600 text-white px-3 py-1 rounded flex items-center ml-2"
-        >
-          <ArrowDownIcon className="h-4 w-4 mr-1" />
-          PDF
-        </button>
-      </div>
+      <div className={`bg-white rounded-lg shadow p-4 ${className}`}>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+          <h2 className="text-xl font-bold">Ranking de Jugadores</h2>
 
-      <DataTable
-        columns={columns}
-        data={jugadores}
-        onRowClick={(row) => console.log(row)}
-        currentPage={currentPage}
-        itemsPerPage={itemsPerPage}
-        totalItems={totalItems}
-        onPageChange={setCurrentPage}
-        onItemsPerPageChange={setItemsPerPage}
-        isLoading={isLoading}
-      />
-    </div>
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            <select
+                value={selectedCategoriaId}
+                onChange={(e) => setSelectedCategoriaId(e.target.value)}
+                className="border rounded px-3 py-1 w-full md:w-48"
+            >
+              <option value="">Todas las categorías</option>
+              {categorias.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.nombre}
+                  </option>
+              ))}
+            </select>
+
+            <button
+                onClick={handleDownloadPDF}
+                className="bg-green-600 text-white px-3 py-1 rounded flex items-center justify-center"
+            >
+              <ArrowDownIcon className="h-4 w-4 mr-1" />
+              PDF
+            </button>
+          </div>
+        </div>
+
+        <DataTable
+            columns={columns}
+            data={jugadores}
+            currentPage={currentPage}
+            itemsPerPage={itemsPerPage}
+            totalItems={totalItems}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+            isLoading={isLoading}
+        />
+      </div>
   )
 }

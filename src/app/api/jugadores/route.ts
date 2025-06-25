@@ -81,3 +81,38 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export async function PUT(request: Request) {
+  try {
+    const data = await request.json()
+
+    // Actualización múltiple
+    if (Array.isArray(data)) {
+      const updatePromises = data.map(jugador =>
+          prisma.jugadores.update({
+            where: { id: jugador.id },
+            data: { categoria_id: jugador.categoria_id }
+          })
+      )
+
+      const updatedJugadores = await Promise.all(updatePromises)
+      return NextResponse.json(updatedJugadores)
+    }
+
+    // Actualización individual
+    const updatedJugador = await prisma.jugadores.update({
+      where: { id: data.id },
+      data: {
+        categoria_id: data.categoria_id
+      }
+    })
+
+    return NextResponse.json(updatedJugador)
+  } catch (error) {
+    console.error('Error updating jugador:', error)
+    return NextResponse.json(
+        { error: "Error al actualizar jugador" },
+        { status: 500 }
+    )
+  }
+}
