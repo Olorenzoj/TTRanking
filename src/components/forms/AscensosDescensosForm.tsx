@@ -60,7 +60,7 @@ export default function GestionAscensoDescenso({ tipo, onClose }: Props) {
 
         const fetchJugadores = async () => {
             try {
-                const res = await fetch(`/api/ranking?all=true&categoriaId=${selectedCategoriaId}`)
+                const res = await fetch(`/api/jugadores?all=true&categoriaId=${selectedCategoriaId}`)
                 const data = await res.json()
                 setJugadores(data.jugadores)
             } catch (error) {
@@ -131,6 +131,35 @@ export default function GestionAscensoDescenso({ tipo, onClose }: Props) {
             setIsSubmitting(false)
             setShowConfirmation(false)
         }
+    }
+
+    // Función para obtener el cambio de categoría para un jugador específico
+    const getCategoriaChange = (jugador: Jugador) => {
+        if (!jugador.categorias) {
+            return { actual: 'Desconocida', nueva: 'Desconocida' };
+        }
+
+        const categoriaActual = jugador.categorias.nombre;
+        let nuevaCategoria = 'Desconocida';
+
+        if (tipo === 'ascenso') {
+            switch (categoriaActual) {
+                case 'segunda': nuevaCategoria = 'Primera'; break;
+                case 'tercera': nuevaCategoria = 'Segunda'; break;
+                case 'cuarta': nuevaCategoria = 'Tercera'; break;
+            }
+        } else {
+            switch (categoriaActual) {
+                case 'primera': nuevaCategoria = 'Segunda'; break;
+                case 'segunda': nuevaCategoria = 'Tercera'; break;
+                case 'tercera': nuevaCategoria = 'Cuarta'; break;
+            }
+        }
+
+        return {
+            actual: categoriaActual,
+            nueva: nuevaCategoria
+        };
     }
 
     return (
@@ -258,25 +287,22 @@ export default function GestionAscensoDescenso({ tipo, onClose }: Props) {
                     <div className="border rounded-md p-4 max-h-60 overflow-y-auto">
                         <ul className="space-y-2">
                             {selectedJugadores.map(jugador => {
-                                const categoriaActual = categorias.find(c => c.id === jugador.categoria_id)
-                                const nuevaCategoriaId = tipo === 'ascenso'
-                                    ? (categoriaActual?.id || 0) - 1
-                                    : (categoriaActual?.id || 0) + 1
-                                const nuevaCategoria = categorias.find(c => c.id === nuevaCategoriaId)
+                                const { actual, nueva } = getCategoriaChange(jugador)
 
                                 return (
                                     <li key={jugador.id} className="flex justify-between items-center py-2 border-b">
                                         <span className="font-medium">{jugador.nombre}</span>
                                         <div className="flex items-center">
-                                            <span className="text-gray-600 mr-2">{categoriaActual?.nombre}</span>
+                                            <span className="text-gray-600 mr-2">{actual}</span>
                                             <span className="text-gray-400 mx-2">→</span>
-                                            <span className="font-semibold">{nuevaCategoria?.nombre}</span>
+                                            <span className="font-semibold">{nueva}</span>
                                         </div>
                                     </li>
                                 )
                             })}
                         </ul>
                     </div>
+
 
                     <p className="mt-4 text-sm text-red-600">
                         Esta acción no se puede deshacer. ¿Desea continuar?

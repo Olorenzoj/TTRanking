@@ -133,7 +133,7 @@ export default function RankingSection({ className = '' }) {
       const doc = new jsPDF()
 
     const img = new Image()
-    img.src = '/Logo.jpg'
+    img.src = '/logo.jpg'
 
     img.onload = () => {
       const pdfWidth = 210
@@ -143,7 +143,7 @@ export default function RankingSection({ className = '' }) {
       const logoY = 1
 
       doc.addImage(img, 'PNG', logoX, logoY, logoWidth, logoHeight)
-      const title = `Ranking ATTA ${categoriaNombre ? `${categoriaNombre} CAT - ` : ''}${getCurrentMonth(month, year, true)}`
+      const title = `Ranking ATTA ${categoriaNombre ? `${categoriaNombre} Categoria - ` : ''}${getCurrentMonth(month, year, true)}`
       const lineY = logoY + logoHeight + 5
       doc.setLineWidth(0.5)
       doc.line(15, lineY, 195, lineY)

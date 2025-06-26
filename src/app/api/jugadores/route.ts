@@ -6,15 +6,22 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const all = searchParams.get('all') === 'true'
     const page = Number(searchParams.get('page') || 1)
+    const categoriaId = searchParams.get('categoriaId')
     const limit = Number(searchParams.get('limit') || 10)
     const skip = (page - 1) * limit
+
+
+    // Filtro por categoría
+    const where = categoriaId ? { categoria_id: Number(categoriaId) } : {}
 
     // Si se solicita todos los registros
     if (all) {
       const jugadores = await prisma.jugadores.findMany({
+        where,
         select: {
           id: true,
           nombre: true,
+          categorias: true,
           elo: true
         },
         orderBy: {
