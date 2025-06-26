@@ -7,6 +7,9 @@ interface Jugador {
     id: number
     nombre: string
     categoria_id: number
+    categorias?: {  // Cambiado a objeto opcional
+        nombre: string
+    }
 }
 
 interface Categoria {
