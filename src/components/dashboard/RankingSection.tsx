@@ -33,7 +33,7 @@ export default function RankingSection({ className = '' }) {
     try {
       const response = await fetch('/api/categorias')
       const data = await response.json()
-      setCategorias(data.categorias)
+      setCategorias(data)
     } catch (error) {
       console.error('Error fetching categories:', error)
     }
@@ -133,11 +133,11 @@ export default function RankingSection({ className = '' }) {
       const doc = new jsPDF()
 
     const img = new Image()
-    img.src = '/Logo.png'
+    img.src = '/Logo.jpg'
 
     img.onload = () => {
       const pdfWidth = 210
-      const logoWidth = 70
+      const logoWidth = 115
       const logoHeight = 45
       const logoX = (pdfWidth - logoWidth) / 2
       const logoY = 1

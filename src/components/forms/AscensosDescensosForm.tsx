@@ -19,7 +19,7 @@ interface Props {
     onClose: () => void
 }
 
-export default function AscensosDescensosForm({ tipo, onClose }: Props) {
+export default function GestionAscensoDescenso({ tipo, onClose }: Props) {
     const [categorias, setCategorias] = useState<Categoria[]>([])
     const [jugadores, setJugadores] = useState<Jugador[]>([])
     const [selectedCategoriaId, setSelectedCategoriaId] = useState<string>('')
@@ -36,7 +36,7 @@ export default function AscensosDescensosForm({ tipo, onClose }: Props) {
                 const data = await res.json()
 
                 // Filtrar categorías según el tipo
-                const filtered = data.categorias.filter((cat: Categoria) =>
+                const filtered = data.filter((cat: Categoria) =>
                     tipo === 'ascenso' ? cat.id !== 1 : cat.id !== 4
                 )
 
