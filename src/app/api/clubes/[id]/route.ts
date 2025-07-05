@@ -1,9 +1,7 @@
-// @ts-ignore
-
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-// @ts-expect-error Ignorar error específico de tipo
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
     const clubId = parseInt(id)
 
