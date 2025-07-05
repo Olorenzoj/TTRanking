@@ -10,7 +10,7 @@ export default function Home() {
     const handleAccessDashboard = async () => {
         setLoading(true)
         try {
-            const res = await fetch('/api/check-db')
+            const res = await fetch('/api/dbStarter')
             const data = await res.json()
 
             if (data.success) {
