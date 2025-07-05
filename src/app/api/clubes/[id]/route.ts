@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+// Define el tipo para el contexto de la ruta
+interface RouteContext {
+    params: {
+        id: string;
+    };
+}
+
 export async function PATCH(
-    request: NextRequest,  // Cambiado de Request a NextRequest
-    { params }: { params: { id: string } }
+    request: NextRequest,
+    context: RouteContext  // Usa el tipo RouteContext
 ) {
-    const { id } = params;
+    const { id } = context.params;  // Accede a params desde context
     const clubId = parseInt(id);
 
     const body = await request.json();
