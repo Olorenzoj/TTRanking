@@ -1,19 +1,7 @@
 import prisma from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { partidos_ronda } from '@prisma/client'
-function mapRondaToEnum(valor: string): partidos_ronda {
-  switch (valor) {
-    case "32avos": return "treinta_y_dos_avos";
-    case "16avos": return "dieciseis_avos";
-    case "Octavos": return "Octavos";
-    case "Cuartos": return "Cuartos";
-    case "Semifinal": return "Semifinal";
-    case "Final": return "Final";
-    case "Campeón": return "Campeon";
-    case "Grupos": return "Grupos";
-    default: return "Grupos";
-  }
-}
+
 function mapEnumToRondaValor(valor: partidos_ronda | null): string {
   if (valor === null) return 'N/A';
 
@@ -103,7 +91,7 @@ export async function POST(request: Request) {
         ${j2 !== null ? j2 : 'NULL'},
         ${g},
         ${t},
-        '${mapRondaToEnum(ronda)}',
+        '${ronda}',
         ${data.tipo_especial ? `'${data.tipo_especial}'` : 'NULL'}
       )
     `);

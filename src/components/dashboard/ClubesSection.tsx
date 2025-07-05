@@ -23,6 +23,12 @@ export default function ClubesSection() {
   const [totalItems, setTotalItems] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
 
+  //edicion directa desde el DT
+  const [editingClubId, setEditingClubId] = useState<number | null>(null);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState<string | number>('');
+
+
   const fetchClubes = async (page: number, limit: number) => {
     setIsLoading(true)
     try {
@@ -45,13 +51,65 @@ export default function ClubesSection() {
     }
   }
 
+  const handleEditStart = (jugadorId: number, field: string, currentValue: string | number) => {
+    setEditingClubId(jugadorId);
+    setEditingField(field);
+    setEditingValue(currentValue);
+  };
+
+  const handleEditSave = async () => {
+    if (editingClubId === null || editingField === null) return;
+
+    try {
+      await fetch(`/api/clubes/${editingClubId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [editingField]: editingValue }),
+      });
+
+      await fetchClubes(currentPage, itemsPerPage);
+    } catch (error) {
+      console.error('Error guardando edición:', error);
+    } finally {
+      setEditingClubId(null);
+      setEditingField(null);
+      setEditingValue('');
+    }
+  };
+
   useEffect(() => {
     fetchClubes(currentPage, itemsPerPage)
   }, [currentPage, itemsPerPage])
   
   const columns = [
     { header: 'ID', accessor: 'id', sortable: true },
-    { header: 'Nombre', accessor: 'nombre' },
+    {
+      header: 'Nombre',
+      accessor: 'nombre',
+      render: (nombre: string, row: Club) => {
+        if (editingClubId === row.id && editingField === 'nombre') {
+          return (
+              <input
+                  type="text"
+                  value={editingValue}
+                  autoFocus
+                  onChange={(e) => setEditingValue(e.target.value)}
+                  onBlur={handleEditSave}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleEditSave();
+                  }}
+                  className="border rounded px-1 py-0.5 w-full"
+              />
+          );
+        }
+        return (
+            <span onClick={() => handleEditStart(row.id, 'nombre', nombre)} className="cursor-pointer hover:underline">
+        {nombre}
+      </span>
+        );
+      },
+      sortable: true,
+    },
     { header: 'Jugadores', accessor: 'jugadoresCount' },
   ]
 

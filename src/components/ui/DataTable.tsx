@@ -146,8 +146,8 @@ export default function DataTable({
             ))}
           </select>
         </div>
-        
-        <div className="flex mt-2 md:mt-0">
+
+        <div className="flex items-center justify-center mt-2 md:mt-0 space-x-1 text-sm">
           <button
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1 || isLoading}

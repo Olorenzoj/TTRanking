@@ -9,6 +9,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Gestión Torneos Tenis de Mesa',
   description: 'Sistema para administrar torneos de tenis de mesa',
+  icons: '/logo.jpg'
 }
 
 export default function RootLayout({

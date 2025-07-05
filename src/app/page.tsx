@@ -50,20 +50,8 @@ export default function Home() {
                                 disabled={loading}
                                 className="block w-full bg-blue-600 text-white py-3 px-4 rounded-md text-center font-medium hover:bg-blue-700 transition"
                             >
-                                {loading ? 'Verificando base de datos...' : 'Acceder al Dashboard'}
+                                {loading ? 'Conectando a la base de datos...' : 'Acceder al Dashboard'}
                             </button>
-                        </div>
-
-                        <div className="text-center text-gray-600 mt-8">
-                            <p className="mb-2">¿Necesitas ayuda?</p>
-                            <a
-                                href="https://wa.me/50766684666"
-                                className="text-blue-600 hover:underline"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                Contacta a soporte
-                            </a>
                         </div>
                     </div>
                 </div>

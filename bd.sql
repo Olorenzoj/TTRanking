@@ -603,6 +603,8 @@ BEGIN
     DECLARE puntos_perdedor FLOAT;
     DECLARE puntos_bono FLOAT;
     DECLARE id_perdedor INT;
+    DECLARE ronda_perdedor VARCHAR(20);
+
 
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
 BEGIN
@@ -676,17 +678,45 @@ SET elo = elo + puntos_perdedor,
     ultimo_torneo_id = p_torneo_id
 WHERE id = id_perdedor;
 
-INSERT INTO participaciones (jugador_id, torneo_id, categoria_id, elo_antes, elo_despues)
+-- Determinar ronda alcanzada por el perdedor
+
+IF LOWER(p_ronda) = 'campeon' THEN
+    SET ronda_perdedor = 'Final';
+ELSE
+    SET ronda_perdedor = p_ronda;
+END IF;
+
+INSERT INTO participaciones (
+    jugador_id,
+    torneo_id,
+    categoria_id,
+    elo_antes,
+    elo_despues,
+    ronda_alcanzada
+)
 VALUES (
            id_perdedor,
            p_torneo_id,
            cat_perdedor,
            elo_perdedor,
-           elo_perdedor + puntos_perdedor
+           elo_perdedor + puntos_perdedor,
+           ronda_perdedor
        );
+
 END IF;
 
 COMMIT;
 END$$
 
 DELIMITER ;
+ALTER TABLE partidos
+    MODIFY ronda ENUM(
+        'grupos',   -- ← Todo en minúsculas
+        '32avos',
+        '16avos',
+        'octavos',   -- Antes 'Octavos'
+        'cuartos',   -- Antes 'Cuartos'
+        'semifinal',
+        'final',
+        'campeón'    -- Antes 'Campeón'
+        );
