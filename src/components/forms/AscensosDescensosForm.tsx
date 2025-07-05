@@ -97,7 +97,6 @@ export default function GestionAscensoDescenso({ tipo, onClose }: Props) {
     const handleSubmit = async () => {
         setIsSubmitting(true)
         try {
-            // Determinar la nueva categoría
             const currentCategoria = categorias.find(c => c.id === Number(selectedCategoriaId))
             if (!currentCategoria) return
 
@@ -105,36 +104,34 @@ export default function GestionAscensoDescenso({ tipo, onClose }: Props) {
                 ? currentCategoria.id - 1
                 : currentCategoria.id + 1
 
-            // Preparar datos para actualizar
-            const jugadoresToUpdate = selectedJugadores.map(jugador => ({
-                id: jugador.id,
-                categoria_id: newCategoriaId
-            }))
+            const motivo = tipo === 'ascenso' ? 'Ascenso' : 'Descenso'
 
-            // Actualizar jugadores
-            const res = await fetch('/api/jugadores', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(jugadoresToUpdate)
+            const res = await fetch('/api/jugadores/cambiar-categoria', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jugadores: selectedJugadores,
+                    nuevaCategoriaId: newCategoriaId,
+                    motivo
+                })
             })
 
             if (res.ok) {
-                toast.success(tipo === 'ascenso' ? 'Ascensos aplicados' : 'Descensos aplicados')
+                toast.success(`${motivo}s aplicados correctamente`)
                 onClose()
             } else {
                 const errorData = await res.json()
-                toast.error(errorData.error || 'Error al actualizar jugadores')
+                toast.error(errorData.error || 'Error al aplicar cambios')
             }
-        } catch (error) {
-            console.error(error)
+        } catch (err) {
+            console.error(err)
             toast.error('Error de conexión')
         } finally {
             setIsSubmitting(false)
             setShowConfirmation(false)
         }
     }
+
 
     // Función para obtener el cambio de categoría para un jugador específico
     const getCategoriaChange = (jugador: Jugador) => {
