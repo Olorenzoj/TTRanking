@@ -9,21 +9,31 @@ export default function Home() {
 
     const handleAccessDashboard = async () => {
         setLoading(true)
-        try {
-            const res = await fetch('/api/dbStarter')
-            const data = await res.json()
 
-            if (data.success) {
-                router.push('/dashboard') // redirige cuando la BD esté lista
-            } else {
-                alert('La base de datos no está lista aún. Intenta nuevamente.')
+        const maxAttempts = 5
+        let attempt = 0
+
+        while (attempt < maxAttempts) {
+            try {
+                const res = await fetch('/api/dbStarter')
+                const data = await res.json()
+
+                if (data.success) {
+                    router.push('/dashboard')
+                    return
+                } else {
+                    console.log(`Intento ${attempt + 1}: Base de datos no lista`)
+                }
+            } catch (err) {
+                console.warn(`Intento ${attempt + 1} fallido`, err)
             }
-        } catch (err) {
-            console.error(err)
-            alert('Error al conectar con la base de datos.')
-        } finally {
-            setLoading(false)
+
+            attempt++
+            await new Promise((resolve) => setTimeout(resolve, 3000)) // espera 3 segundos antes del siguiente intento
         }
+
+        alert('No se pudo conectar con la base de datos. Intenta nuevamente más tarde.')
+        setLoading(false)
     }
     return (
         <>
