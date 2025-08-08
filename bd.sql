@@ -72,87 +72,82 @@ END$$
 --
 -- Functions
 --
-CREATE DEFINER=`root`@`localhost` FUNCTION `calcular_puntos_partido` (`elo_ganador` FLOAT, `elo_perdedor` FLOAT, `tipo_especial` VARCHAR(10), `ronda` VARCHAR(20)) RETURNS JSON DETERMINISTIC BEGIN
+create
+definer = root@localhost function calcular_puntos_partido(elo_ganador float, elo_perdedor float,
+                                                              tipo_especial varchar(10), ronda varchar(20)) returns json
+    deterministic
+BEGIN
     DECLARE diferencia FLOAT;
     DECLARE puntos_ganador INT;
     DECLARE puntos_perdedor INT;
     DECLARE es_mayor BOOLEAN;
-    DECLARE puntos_bono INT DEFAULT 0;
+    DECLARE bono_ganador INT DEFAULT 0;
+    DECLARE bono_perdedor INT DEFAULT 0;
 
-    -- Asignar bonificación según ronda
-CASE ronda
-        WHEN 'Octavos' THEN SET puntos_bono = 2;
-WHEN 'Cuartos' THEN SET puntos_bono = 5;
-WHEN 'Semifinal' THEN SET puntos_bono = 10;
-WHEN 'Final' THEN SET puntos_bono = 15;
-WHEN 'Campeón' THEN SET puntos_bono = 20;
-ELSE SET puntos_bono = 0;
+    -- Bonificaciones según ronda
+    IF LOWER(ronda) = 'campeon' THEN
+        SET bono_ganador = 20; -- Campeón
+        SET bono_perdedor = 15; -- Finalista
+ELSE
+        CASE ronda
+            WHEN 'Octavos' THEN SET bono_perdedor = 2;
+WHEN 'Cuartos' THEN SET bono_perdedor = 5;
+WHEN 'Semifinal' THEN SET bono_perdedor = 10;
+ELSE SET bono_perdedor = 0;
 END CASE;
-
-    -- Casos especiales (Forfeit/Bye)
-    IF tipo_especial IN ('Forfeit', 'Bye') THEN
-        RETURN JSON_OBJECT(
-            'ganador', CAST(5 + puntos_bono AS CHAR),
-            'perdedor', '0',
-            'bonificacion', CAST(puntos_bono AS CHAR)
-        );
 END IF;
 
-    -- Partido normal
+    -- Forfeit o Bye
+    IF tipo_especial IN ('Forfeit', 'Bye') THEN
+        RETURN JSON_OBJECT(
+                'ganador', CAST(5 + bono_ganador AS CHAR),
+                'perdedor', CAST(bono_perdedor AS CHAR),
+                'bono_ganador', CAST(bono_ganador AS CHAR),
+                'bono_perdedor', CAST(bono_perdedor AS CHAR)
+               );
+END IF;
+
+    -- Cálculo normal
     SET diferencia = ABS(elo_ganador - elo_perdedor);
     SET es_mayor = (elo_ganador >= elo_perdedor);
 
-    -- Ganador con mayor puntaje
     IF es_mayor THEN
         IF diferencia <= 50 THEN
-            SET puntos_ganador = 8;
-            SET puntos_perdedor = -5;
+            SET puntos_ganador = 8; SET puntos_perdedor = -5;
         ELSEIF diferencia <= 100 THEN
-            SET puntos_ganador = 6;
-            SET puntos_perdedor = -4;
+            SET puntos_ganador = 6; SET puntos_perdedor = -4;
         ELSEIF diferencia <= 250 THEN
-            SET puntos_ganador = 4;
-            SET puntos_perdedor = -3;
+            SET puntos_ganador = 4; SET puntos_perdedor = -3;
         ELSEIF diferencia <= 500 THEN
-            SET puntos_ganador = 3;
-            SET puntos_perdedor = -2;
+            SET puntos_ganador = 3; SET puntos_perdedor = -2;
         ELSEIF diferencia <= 1000 THEN
-            SET puntos_ganador = 2;
-            SET puntos_perdedor = -1;
+            SET puntos_ganador = 2; SET puntos_perdedor = -1;
 ELSE
-            SET puntos_ganador = 0;
-            SET puntos_perdedor = 0;
+            SET puntos_ganador = 0; SET puntos_perdedor = 0;
 END IF;
-    -- Ganador con menor puntaje
 ELSE
         IF diferencia <= 100 THEN
-            SET puntos_ganador = 10;
-            SET puntos_perdedor = -10;
+            SET puntos_ganador = 10; SET puntos_perdedor = -10;
         ELSEIF diferencia <= 200 THEN
-            SET puntos_ganador = 20;
-            SET puntos_perdedor = -15;
+            SET puntos_ganador = 20; SET puntos_perdedor = -15;
         ELSEIF diferencia <= 350 THEN
-            SET puntos_ganador = 30;
-            SET puntos_perdedor = -20;
+            SET puntos_ganador = 30; SET puntos_perdedor = -20;
         ELSEIF diferencia <= 500 THEN
-            SET puntos_ganador = 40;
-            SET puntos_perdedor = -25;
+            SET puntos_ganador = 40; SET puntos_perdedor = -25;
         ELSEIF diferencia <= 1000 THEN
-            SET puntos_ganador = 50;
-            SET puntos_perdedor = -30;
+            SET puntos_ganador = 50; SET puntos_perdedor = -30;
 ELSE
-            SET puntos_ganador = 75;
-            SET puntos_perdedor = -50;
+            SET puntos_ganador = 75; SET puntos_perdedor = -50;
 END IF;
 END IF;
 
 RETURN JSON_OBJECT(
-        'ganador', CAST(puntos_ganador + puntos_bono AS CHAR),
+        'ganador', CAST(puntos_ganador AS CHAR),
         'perdedor', CAST(puntos_perdedor AS CHAR),
-        'bonificacion', CAST(puntos_bono AS CHAR)
+        'bono_ganador', CAST(bono_ganador AS CHAR),
+        'bono_perdedor', CAST(bono_perdedor AS CHAR)
        );
-END$$
-
+END;
 DELIMITER ;
 
 -- --------------------------------------------------------
@@ -584,14 +579,10 @@ COMMIT;
 
 DELIMITER $$
 
-CREATE PROCEDURE `procesar_partido` (
-    IN p_jugador1_id INT,
-    IN p_jugador2_id INT,
-    IN p_ganador_id INT,
-    IN p_torneo_id INT,
-    IN p_ronda VARCHAR(20),
-    IN p_tipo_especial VARCHAR(10)
-)
+create
+definer = root@`%` procedure procesar_partido(IN p_jugador1_id int, IN p_jugador2_id int, IN p_ganador_id int,
+                                                  IN p_torneo_id int, IN p_ronda varchar(20),
+                                                  IN p_tipo_especial varchar(10))
 BEGIN
     DECLARE partido_id INT;
     DECLARE elo_ganador FLOAT;
@@ -601,17 +592,30 @@ BEGIN
     DECLARE puntos JSON;
     DECLARE puntos_ganador FLOAT;
     DECLARE puntos_perdedor FLOAT;
-    DECLARE puntos_bono FLOAT;
+    DECLARE bono_ganador FLOAT;
+    DECLARE bono_perdedor FLOAT;
     DECLARE id_perdedor INT;
     DECLARE ronda_perdedor VARCHAR(20);
 
 
+    -- variables para diagnóstico
+    DECLARE v_sqlstate CHAR(5);
+    DECLARE v_errno INT;
+    DECLARE v_text TEXT;
+
+    -- handler que devuelve el error real de MySQL
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
 BEGIN
-ROLLBACK;
-SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error al procesar el partido'; -- Corrected
-END;
+GET DIAGNOSTICS CONDITION 1
+    v_sqlstate = RETURNED_SQLSTATE,
+    v_errno    = MYSQL_ERRNO,
+    v_text     = MESSAGE_TEXT;
 
+ROLLBACK;
+
+SET @proc_error_msg = CONCAT('MySQL ', v_errno, ' (', v_sqlstate, '): ', v_text);
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @proc_error_msg;
+END;
 START TRANSACTION;
 
 -- Insertar el partido
@@ -641,73 +645,69 @@ END IF;
 
     -- Calcular puntos ELO
     SET puntos = calcular_puntos_partido(
-        elo_ganador,
-        elo_perdedor,
-        p_tipo_especial,
-        p_ronda
-    );
+            elo_ganador,
+            elo_perdedor,
+            p_tipo_especial,
+            p_ronda
+                 );
 
-    SET puntos_ganador = CAST(JSON_UNQUOTE(JSON_EXTRACT(puntos, '$.ganador')) AS FLOAT);
-    SET puntos_perdedor = CAST(JSON_UNQUOTE(JSON_EXTRACT(puntos, '$.perdedor')) AS FLOAT);
-    SET puntos_bono = CAST(JSON_UNQUOTE(JSON_EXTRACT(puntos, '$.bonificacion')) AS FLOAT);
+    SET bono_ganador = CAST(JSON_UNQUOTE(JSON_EXTRACT(puntos, '$.bono_ganador')) AS FLOAT);
+    SET bono_perdedor = CAST(JSON_UNQUOTE(JSON_EXTRACT(puntos, '$.bono_perdedor')) AS FLOAT);
+    SET puntos_ganador = CAST( JSON_UNQUOTE(JSON_EXTRACT(puntos, '$.ganador')) AS FLOAT) + bono_ganador;
+    SET puntos_perdedor = CAST(JSON_UNQUOTE(JSON_EXTRACT(puntos, '$.perdedor')) AS FLOAT) + bono_perdedor;
 
     -- Actualizar ELO del ganador
 UPDATE jugadores
-SET elo = elo + puntos_ganador,
+SET elo              = elo + puntos_ganador ,
     ultimo_torneo_id = p_torneo_id
 WHERE id = p_ganador_id;
 
 -- Participación del ganador
-INSERT INTO participaciones (jugador_id, torneo_id, categoria_id, elo_antes, elo_despues, bonificacion, ronda_alcanzada)
-VALUES (
-           p_ganador_id,
-           p_torneo_id,
-           cat_ganador,
-           elo_ganador,
-           elo_ganador + puntos_ganador,
-           puntos_bono,
-           p_ronda
-       );
+INSERT INTO participaciones (jugador_id, torneo_id, categoria_id, elo_antes, elo_despues, bonificacion,
+                             ronda_alcanzada)
+VALUES (p_ganador_id,
+        p_torneo_id,
+        cat_ganador,
+        elo_ganador,
+        elo_ganador + puntos_ganador,
+        bono_ganador,
+        p_ronda);
 
 -- Procesar perdedor
 IF id_perdedor IS NOT NULL AND p_tipo_especial IS NULL THEN
 SELECT categoria_id INTO cat_perdedor FROM jugadores WHERE id = id_perdedor;
 
 UPDATE jugadores
-SET elo = elo + puntos_perdedor,
+SET elo              = elo + puntos_perdedor,
     ultimo_torneo_id = p_torneo_id
 WHERE id = id_perdedor;
 
 -- Determinar ronda alcanzada por el perdedor
 
 IF LOWER(p_ronda) = 'campeon' THEN
-    SET ronda_perdedor = 'Final';
+            SET ronda_perdedor = 'Final';
 ELSE
-    SET ronda_perdedor = p_ronda;
+            SET ronda_perdedor = p_ronda;
 END IF;
 
-INSERT INTO participaciones (
-    jugador_id,
-    torneo_id,
-    categoria_id,
-    elo_antes,
-    elo_despues,
-    ronda_alcanzada
-)
-VALUES (
-           id_perdedor,
-           p_torneo_id,
-           cat_perdedor,
-           elo_perdedor,
-           elo_perdedor + puntos_perdedor,
-           ronda_perdedor
-       );
+INSERT INTO participaciones (jugador_id,
+                             torneo_id,
+                             categoria_id,
+                             elo_antes,
+                             elo_despues,
+                             bonificacion,
+                             ronda_alcanzada)
+VALUES (id_perdedor,
+        p_torneo_id,
+        cat_perdedor,
+        elo_perdedor,
+        elo_perdedor + puntos_perdedor,
+        bono_perdedor,
+        ronda_perdedor);
 
 END IF;
-
 COMMIT;
-END$$
-
+END;
 DELIMITER ;
 ALTER TABLE partidos
     MODIFY ronda ENUM(
