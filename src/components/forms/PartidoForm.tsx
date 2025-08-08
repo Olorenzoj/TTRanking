@@ -288,7 +288,6 @@ export default function PartidoForm({ onSuccessAction, onCancelAction }: Partido
               <option value="Octavos">Octavos</option>
               <option value="Cuartos">Cuartos</option>
               <option value="Semifinal">Semifinal</option>
-              <option value="Final">Final</option>
               <option value="Campeón">Campeón</option>
             </select>
           </div>
