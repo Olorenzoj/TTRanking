@@ -2,16 +2,22 @@ import prisma from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { partidos_ronda } from '@prisma/client'
 
-function mapEnumToRondaValor(valor: partidos_ronda | null): string {
-  if (valor === null) return 'N/A';
+const mapRondas: Record<partidos_ronda, string> = {
+    Grupos: "Grupos",
+    Treintaydoavos: "32avos",
+    Dieciseisavos: "16avos",
+    Octavos: "Octavos",
+    Cuartos: "Cuartos",
+    Semifinal: "Semifinal",
+    Final: "Final",
+    Campe_n: "Campeón"
+};
 
-  switch (valor) {
-    case "treinta_y_dos_avos": return "32avos";
-    case "dieciseis_avos": return "16avos";
-    case "Campeon": return "Campeón";
-    default: return valor;
-  }
+function mapEnumToRondaValor(valor: partidos_ronda | null): string {
+    if (!valor) return "N/A";
+    return mapRondas[valor];
 }
+
 
 export async function GET(request: Request) {
   try {
