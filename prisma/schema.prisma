@@ -147,22 +147,22 @@ enum partidos_tipo_especial {
 
 enum partidos_ronda {
   Grupos
-  Treintaydoavos @map("32avos")
-  Dieciseisavos  @map("16avos")
+  treinta_y_dos_avos @map("32avos")
+  dieciseis_avos     @map("16avos")
   Octavos
   Cuartos
   Semifinal
   Final
-  Campe_n        @map("Campeón")
+  Campe_n            @map("Campeón")
 }
 
 enum participaciones_ronda_alcanzada {
   grupos
-  Treintaydoavos @map("32avos")
-  Dieciseisavos  @map("16avos")
+  treinta_y_dos_avos @map("32avos")
+  dieciseis_avos     @map("16avos")
   octavos
   cuartos
   semifinal
   final
-  campe_n        @map("campeón")
+  campe_n            @map("campeón")
 }
