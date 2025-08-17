@@ -125,61 +125,82 @@ export default function RankingSection({ className = '' }) {
       const year = date.getFullYear()
       const month = date.getMonth()
 
-      // Obtener nombre de categoría seleccionada
       const categoriaNombre = selectedCategoriaId
           ? categorias.find(cat => cat.id === Number(selectedCategoriaId))?.nombre || ''
           : ''
 
       const doc = new jsPDF()
-
-    const img = new Image()
-    img.src = '/logo.jpg'
-
-    img.onload = () => {
       const pdfWidth = 210
-      const logoWidth = 115
-      const logoHeight = 45
-      const logoX = (pdfWidth - logoWidth) / 2
-      const logoY = 1
+      const pdfHeight = 297
 
-      doc.addImage(img, 'PNG', logoX, logoY, logoWidth, logoHeight)
-      const title = `Ranking ATTA ${categoriaNombre ? `${categoriaNombre} Categoria - ` : ''}${getCurrentMonth(month, year, true)}`
-      const lineY = logoY + logoHeight + 5
-      doc.setLineWidth(0.5)
-      doc.line(15, lineY, 195, lineY)
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.src = '/logo.jpg'
 
-      doc.setFontSize(18)
+      img.onload = () => {
+        // 🧪 Crear canvas para imagen translúcida (marca de agua)
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')!
+        const wmW = 200
+        const wmH = 100
+        canvas.width = wmW
+        canvas.height = wmH
+        ctx.globalAlpha = 0.15
+        ctx.drawImage(img, 0, 0, wmW, wmH)
+        const watermarkDataUrl = canvas.toDataURL('image/png')
 
-      const titleWidth = doc.getTextWidth(title)
-      const titleX = (pdfWidth - titleWidth) / 2
-      const titleY = lineY + 8
+        // 🖼 Logo encabezado
+        const logoWidth = 40
+        const logoHeight = 20
+        const logoX = 10
+        const logoY = 10
+        doc.addImage(img, 'PNG', logoX, logoY, logoWidth, logoHeight)
 
-      doc.text(title, titleX, titleY)
+        // 🎯 Título centrado
+        const title = `Ranking ATTA ${categoriaNombre ? `${categoriaNombre} Categoria - ` : ''}${getCurrentMonth(month, year, true)}`
+        doc.setFontSize(20)
+        doc.setFont('corsiva', 'italic')
+        doc.setTextColor(40, 40, 40)
+        const titleWidth = doc.getTextWidth(title)
+        const titleX = (pdfWidth - titleWidth) / 2
+        const titleY = logoY + logoHeight + 10
+        doc.text(title, titleX, titleY)
 
-      autoTable(doc, {
-        startY: titleY + 5,
-        head: [['Ranking', 'Nombre', 'Puntos', 'Club', 'Categoría']],
-        body: data.jugadores.map((j: Jugador, index: number) => [
-          index + 1,
-          j.nombre,
-          j.elo,
-          j.clubes?.nombre || 'Sin club',
-          j.categorias?.nombre || 'Sin categoría'
-        ])
-      })
+        const lineY = titleY + 4
+        doc.setLineWidth(0.5)
+        doc.line(15, lineY, 195, lineY)
 
-      doc.save(`Ranking_Atta_${categoriaNombre || 'General'}_${getCurrentMonth(month, year, false)}.pdf`)
+        // 🧾 Tabla con marca de agua en cada página
+        autoTable(doc, {
+          startY: lineY + 5,
+          head: [['Ranking', 'Nombre', 'Puntos', 'Club', 'Categoría']],
+          body: data.jugadores.map((j: Jugador, index: number) => [
+            index + 1,
+            j.nombre,
+            j.elo,
+            j.clubes?.nombre || 'Sin club',
+            j.categorias?.nombre || 'Sin categoría'
+          ]),
+          didDrawPage: function (data) {
+            const wmX = (pdfWidth - wmW * 0.6) / 2
+            const wmY = (pdfHeight - wmH * 0.6) / 2
+            doc.addImage(watermarkDataUrl, 'PNG', wmX, wmY, wmW * 0.6, wmH * 0.6)
+          }
+        })
+
+        doc.save(`Ranking_Atta_${categoriaNombre || 'General'}_${getCurrentMonth(month, year, false)}.pdf`)
+      }
+
+      img.onerror = () => {
+        alert('Error cargando el logo para el PDF.')
+      }
+    } catch (error) {
+      console.error('Error al generar PDF:', error)
+    } finally {
+      setIsLoading(false)
     }
-
-    img.onerror = () => {
-      alert('Error loading logo image for the PDF.')
-    }
-  } catch (error) {
-    console.error('Error al generar PDF:', error)
-  } finally {
-    setIsLoading(false)
   }
-}
+
 
 
   const columns = [
