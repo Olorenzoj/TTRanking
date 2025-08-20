@@ -108,98 +108,104 @@ export default function RankingSection({ className = '' }) {
   }
 
   const handleDownloadPDF = async () => {
-    setIsLoading(true)
-    try {
-      const url = `/api/ranking?all=true${
-          selectedCategoriaId ? `&categoriaId=${selectedCategoriaId}` : ''
-      }`
+  setIsLoading(true)
+  try {
+    const url = `/api/ranking?all=true${
+      selectedCategoriaId ? `&categoriaId=${selectedCategoriaId}` : ''
+    }`
 
-      const response = await fetch(url)
+    const response = await fetch(url)
 
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      const date = new Date()
-      const year = date.getFullYear()
-      const month = date.getMonth()
-
-      const categoriaNombre = selectedCategoriaId
-          ? categorias.find(cat => cat.id === Number(selectedCategoriaId))?.nombre || ''
-          : ''
-
-      const doc = new jsPDF()
-      const pdfWidth = 210
-      const pdfHeight = 297
-
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.src = '/logo.jpg'
-
-      img.onload = () => {
-        // 🧪 Crear canvas para imagen translúcida (marca de agua)
-        const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')!
-        const wmW = 200
-        const wmH = 100
-        canvas.width = wmW
-        canvas.height = wmH
-        ctx.globalAlpha = 0.15
-        ctx.drawImage(img, 0, 0, wmW, wmH)
-        const watermarkDataUrl = canvas.toDataURL('image/png')
-
-        // 🖼 Logo encabezado
-        const logoWidth = 40
-        const logoHeight = 20
-        const logoX = 10
-        const logoY = 10
-        doc.addImage(img, 'PNG', logoX, logoY, logoWidth, logoHeight)
-
-        // 🎯 Título centrado
-        const title = `Ranking ATTA ${categoriaNombre ? `${categoriaNombre} Categoria - ` : ''}${getCurrentMonth(month, year, true)}`
-        doc.setFontSize(20)
-        doc.setFont('corsiva', 'italic')
-        doc.setTextColor(40, 40, 40)
-        const titleWidth = doc.getTextWidth(title)
-        const titleX = (pdfWidth - titleWidth) / 2
-        const titleY = logoY + logoHeight + 10
-        doc.text(title, titleX, titleY)
-
-        const lineY = titleY + 4
-        doc.setLineWidth(0.5)
-        doc.line(15, lineY, 195, lineY)
-
-        // 🧾 Tabla con marca de agua en cada página
-        autoTable(doc, {
-          startY: lineY + 5,
-          head: [['Ranking', 'Nombre', 'Puntos', 'Club', 'Categoría']],
-          body: data.jugadores.map((j: Jugador, index: number) => [
-            index + 1,
-            j.nombre,
-            j.elo,
-            j.clubes?.nombre || 'Sin club',
-            j.categorias?.nombre || 'Sin categoría'
-          ]),
-          didDrawPage: function (data) {
-            const wmX = (pdfWidth - wmW * 0.6) / 2
-            const wmY = (pdfHeight - wmH * 0.6) / 2
-            doc.addImage(watermarkDataUrl, 'PNG', wmX, wmY, wmW * 0.6, wmH * 0.6)
-          }
-        })
-
-        doc.save(`Ranking_Atta_${categoriaNombre || 'General'}_${getCurrentMonth(month, year, false)}.pdf`)
-      }
-
-      img.onerror = () => {
-        alert('Error cargando el logo para el PDF.')
-      }
-    } catch (error) {
-      console.error('Error al generar PDF:', error)
-    } finally {
-      setIsLoading(false)
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`)
     }
+
+    const data = await response.json()
+    const date = new Date()
+    const year = date.getFullYear()
+    const month = date.getMonth()
+
+    const categoriaNombre = selectedCategoriaId
+      ? categorias.find(cat => cat.id === Number(selectedCategoriaId))?.nombre || ''
+      : ''
+
+    const doc = new jsPDF()
+    const pdfWidth = 210
+    const pdfHeight = 297
+
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.src = '/logo.jpg'
+
+    img.onload = () => {
+      // 🧪 Crear canvas para marca de agua en alta resolución
+      const scale = 3 // más alto = mejor calidad
+      const wmW = 200 * scale
+      const wmH = 100 * scale
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')!
+      canvas.width = wmW
+      canvas.height = wmH
+      ctx.globalAlpha = 0.15
+      ctx.drawImage(img, 0, 0, wmW, wmH)
+      const watermarkDataUrl = canvas.toDataURL('image/png')
+
+      // 🧾 Tabla con encabezado y marca de agua en cada página
+      autoTable(doc, {
+        head: [['Ranking', 'Nombre', 'Puntos', 'Club', 'Categoría']],
+        body: data.jugadores.map((j: Jugador, index: number) => [
+          index + 1,
+          j.nombre,
+          j.elo,
+          j.clubes?.nombre || 'Sin club',
+          j.categorias?.nombre || 'Sin categoría'
+        ]),
+        didDrawPage: function () {
+          // 🔹 Logo encabezado
+          const logoWidth = 40
+          const logoHeight = 20
+          const logoX = 10
+          const logoY = 10
+          doc.addImage(img, 'PNG', logoX, logoY, logoWidth, logoHeight)
+
+          // 🔹 Título centrado
+          const title = `Ranking ATTA ${categoriaNombre ? `${categoriaNombre} Categoria - ` : ''}${getCurrentMonth(month, year, true)}`
+          doc.setFontSize(20)
+          doc.setFont('times', 'italic')
+          doc.setTextColor(40, 40, 40)
+          const titleWidth = doc.getTextWidth(title)
+          const titleX = (pdfWidth - titleWidth) / 2
+          const titleY = logoY + logoHeight + 10
+          doc.text(title, titleX, titleY)
+
+          // 🔹 Línea debajo del título
+          const lineY = titleY + 4
+          doc.setLineWidth(0.5)
+          doc.line(15, lineY, 195, lineY)
+
+          // 🔹 Marca de agua en el centro (usando el canvas en alta resolución)
+          const wmDisplayW = (wmW / scale) * 0.6
+          const wmDisplayH = (wmH / scale) * 0.6
+          const wmX = (pdfWidth - wmDisplayW) / 2
+          const wmY = (pdfHeight - wmDisplayH) / 2
+          doc.addImage(watermarkDataUrl, 'PNG', wmX, wmY, wmDisplayW, wmDisplayH)
+        },
+        margin: { top: 45 } // espacio para el encabezado
+      })
+
+      // 💾 Descargar PDF
+      doc.save(`Ranking_Atta_${categoriaNombre || 'General'}_${getCurrentMonth(month, year, false)}.pdf`)
+    }
+
+    img.onerror = () => {
+      alert('Error cargando el logo para el PDF.')
+    }
+  } catch (error) {
+    console.error('Error al generar PDF:', error)
+  } finally {
+    setIsLoading(false)
   }
+}
 
 
 
