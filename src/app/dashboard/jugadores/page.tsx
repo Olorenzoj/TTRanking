@@ -1,4 +1,5 @@
  import JugadoresWrapper from '@/components/dashboard/JugadoresWrapper'
+ import JugadorSearchAutocomplete from "@/components/dashboard/JugadorSearchAutoComplete";
 
 export default function JugadoresPage() {
   return (
@@ -7,7 +8,7 @@ export default function JugadoresPage() {
         <h1 className="text-2xl font-bold text-gray-800">Jugadores</h1>
         <p className="text-gray-600">visualiza el ranking</p>
       </div>
-      
+      <JugadorSearchAutocomplete/>
       <JugadoresWrapper />
     </div>
   )
